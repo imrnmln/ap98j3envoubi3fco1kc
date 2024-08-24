@@ -504,10 +504,10 @@ async def generate_url(autonomous_subreddit_choice=0.35, keyword: str = "BTC"):
     else:
         if random.random() < 0.5:     
             logging.info("[Reddit] Top 225 Subreddits mode!")       
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)
+            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
         else:            
             logging.info("[Reddit] Top 1000 Subreddits mode!")
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)
+            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
         
         return selected_subreddit_
 
@@ -692,30 +692,18 @@ def find_permalinks(data):
         for item in data:
             yield from find_permalinks(item)
 
-async def scrap_subreddit_json(subreddit_url: str) -> AsyncGenerator[Item, None]:
+async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]:
     try:
-        async with aiohttp.ClientSession() as session:
-            url_to_fetch = subreddit_url
-            if random.random() < 0.75:
-                url_to_fetch = url_to_fetch + "/new"
-            url_to_fetch = url_to_fetch + "/.json"
-                
-            if url_to_fetch.endswith("/new/new/.json"):
-                url_to_fetch = url_to_fetch.replace("/new/new/.json", "/new.json")
-            logging.info("[Reddit] [JSON MODE] opening: %s",url_to_fetch)
-            reddit_session_cookie = await get_email(".env") 
-            cookies = {'reddit_session': reddit_session_cookie}
-            session.cookie_jar.update_cookies(cookies)
-            await asyncio.sleep(2)
-            async with session.get(url_to_fetch, 
-                headers={"User-Agent": random.choice(USER_AGENT_LIST)},     
-                timeout=BASE_TIMEOUT) as response:
-                # Parse JSON response
-                data = await response.json()
-                # Find all "permalink" values
-                                
-                permalinks = list(find_permalinks(data))
-
+        urls = subreddit_urls.split(';')
+        
+        reddit_session_cookie = await get_email(".env")
+        cookies = {'reddit_session': reddit_session_cookie}
+        
+        async with aiohttp.ClientSession(cookies=cookies) as session:
+            tasks = [fetch_subreddit_json(session, url) for url in urls]
+            results = await asyncio.gather(*tasks)
+            
+            for permalinks in results:
                 for permalink in permalinks:
                     try:
                         if random.random() < SKIP_POST_PROBABILITY:
@@ -725,11 +713,31 @@ async def scrap_subreddit_json(subreddit_url: str) -> AsyncGenerator[Item, None]
                             async for item in scrap_post(url):
                                 yield item
                     except Exception as e:
-                        logging.exception(f"[Reddit] [JSON MODE] Error detected")
+                        logging.exception(f"[Reddit] [JSON MODE] Error detected: {e}")
 
-    except:
-        logging.info("Session close")
+    except Exception as e:
+        logging.exception(f"[Reddit] [JSON MODE] Session Error: {e}")
         await session.close()
+
+async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
+    try:
+        url_to_fetch = subreddit_url
+        if random.random() < 0.75:
+            url_to_fetch = url_to_fetch + "/new"
+        url_to_fetch = url_to_fetch + "/.json"
+                
+        if url_to_fetch.endswith("/new/new/.json"):
+            url_to_fetch = url_to_fetch.replace("/new/new/.json", "/new.json")
+        
+        logging.info("[Reddit] [JSON MODE] opening: %s", url_to_fetch)
+        
+        async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
+            data = await response.json()
+            return find_permalinks(data)
+
+    except Exception as e:
+        logging.exception(f"[Reddit] [JSON MODE] Fetch Error: {e}")
+        return []
 
 
 DEFAULT_OLDNESS_SECONDS = 36000
