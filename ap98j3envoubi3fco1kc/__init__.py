@@ -4,7 +4,7 @@ import dotenv
 import os
 import asyncio
 from lxml import html
-from typing import AsyncGenerator
+from typing import AsyncGenerator, List
 import time
 from datetime import time as tttime, datetime as datett
 from datetime import timezone
