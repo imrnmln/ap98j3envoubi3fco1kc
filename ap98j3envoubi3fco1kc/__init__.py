@@ -726,6 +726,9 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
         try:
             # Adjust URL for new posts and JSON format
             url_to_fetch = subreddit_url
+            if "https:/reddit.com" in url_to_fetch:
+                url_to_fetch = url_to_fetch.replace("https:/reddit.com", "https://reddit.com")
+                
             if random.random() < 0.75:
                 url_to_fetch = url_to_fetch + "/new"
             url_to_fetch = url_to_fetch + "/.json"
