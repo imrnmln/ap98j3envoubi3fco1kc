@@ -750,15 +750,15 @@ def fetch_subreddit_json_sync(session: aiohttp.ClientSession, subreddit_url: str
 
 async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
     try:
-        if "https:/reddit.com" in url_to_fetch:
-            url_to_fetch = url_to_fetch.replace("https:/reddit.com", "https://reddit.com")
-            
         if not subreddit_url.startswith("https://"):
             subreddit_url = "https://" + subreddit_url
         if not subreddit_url.endswith("/.json"):
             subreddit_url = subreddit_url.rstrip('/') + "/.json"
 
         url_to_fetch = subreddit_url
+        if "https:/reddit.com" in url_to_fetch:
+            url_to_fetch = url_to_fetch.replace("https:/reddit.com", "https://reddit.com")
+            
         if random.random() < 0.75:
             url_to_fetch = url_to_fetch.replace("/.json", "/new/.json")
             
