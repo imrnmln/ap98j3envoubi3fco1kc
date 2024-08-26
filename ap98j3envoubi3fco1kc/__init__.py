@@ -5,6 +5,7 @@ import os
 import asyncio
 from lxml import html
 from typing import AsyncGenerator, List
+from concurrent.futures import ThreadPoolExecutor
 import time
 from datetime import time as tttime, datetime as datett
 from datetime import timezone
@@ -504,10 +505,10 @@ async def generate_url(autonomous_subreddit_choice=0.35, keyword: str = "BTC"):
     else:
         if random.random() < 0.5:     
             logging.info("[Reddit] Top 225 Subreddits mode!")       
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
+            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
         else:            
             logging.info("[Reddit] Top 1000 Subreddits mode!")
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
+            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
         
         return selected_subreddit_
 
@@ -651,36 +652,60 @@ def split_strings_subreddit_name(input_string):
     return ' '.join(words)
 
 
-async def scrap_subreddit_new_layout(subreddit_url: str) -> AsyncGenerator[Item, None]:
-    
+async def scrap_subreddit_new_layout(subreddit_urls: str) -> AsyncGenerator[str, None]:
     try:
-        async with aiohttp.ClientSession() as session:
-            url_to_fetch = subreddit_url
-            logging.info("[Reddit] [NEW LAYOUT MODE] Opening: %s",url_to_fetch)
-            reddit_session_cookie = await get_email(".env") 
-            cookies = {'reddit_session': reddit_session_cookie}
-            session.cookie_jar.update_cookies(cookies)
-            #session.cookie_jar.update_cookies({'reddit_session': reddit_session_cookie, 'domain': '.reddit.com'})
-            async with session.get(url_to_fetch, 
-                headers={"User-Agent": random.choice(USER_AGENT_LIST)},     
-                timeout=BASE_TIMEOUT) as response:
-                html_content = await response.text()     
-                html_tree = fromstring(html_content)
-                for post in html_tree.xpath("//shreddit-post/@permalink"):
-                    url = post
-                    if url.startswith("/r/"):
-                        url = "https://www.reddit.com" + post
-                    await asyncio.sleep(1)
+        urls = subreddit_urls.split(';')
+        reddit_session_cookie = await get_email(".env")
+        cookies = {'reddit_session': reddit_session_cookie}
+
+        async with aiohttp.ClientSession(cookies=cookies) as session:
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                tasks = [loop.run_in_executor(executor, fetch_subreddit_new_layout_sync, session, url.strip()) for url in urls]
+                results = await asyncio.gather(*tasks)
+            
+            for permalinks in results:
+                for permalink in permalinks:
                     try:
-                        if "https" not in url:
-                            url = f"https://reddit.com{url}"
-                        async for item in scrap_post(url):
+                        if "https" not in permalink:
+                            permalink = f"https://reddit.com{permalink}"
+                        async for item in scrap_post(permalink):
                             yield item
-                    except Exception:
-                        pass
-    except:
-        logging.info("Session close")
+                    except Exception as e:
+                        logging.exception(f"[Reddit] [NEW LAYOUT MODE] Error detected: {e}")
+
+    except Exception as e:
+        logging.exception(f"[Reddit] [NEW LAYOUT MODE] Session Error: {e}")
         await session.close()
+
+def fetch_subreddit_new_layout_sync(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
+    return asyncio.run(fetch_subreddit_new_layout(session, subreddit_url))
+
+async def fetch_subreddit_new_layout(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
+    try:
+        if not subreddit_url.startswith("https://"):
+            subreddit_url = "https://" + subreddit_url
+
+        logging.info("[Reddit] [NEW LAYOUT MODE] Opening: %s", subreddit_url)
+        
+        async with session.get(subreddit_url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
+            
+            if response.status == 429:
+                logging.warning("[Reddit] [NEW LAYOUT MODE] Rate limit encountered.")
+                return []
+
+            if response.status != 200:
+                logging.error(f"[Reddit] [NEW LAYOUT MODE] Non-200 status code: {response.status}")
+                return []
+
+            html_content = await response.text()
+            html_tree = fromstring(html_content)
+            permalinks = html_tree.xpath("//shreddit-post/@permalink")
+            return permalinks
+
+    except Exception as e:
+        logging.exception(f"[Reddit] [NEW LAYOUT MODE] Fetch Error: {e}")
+        return []
 
 def find_permalinks(data):
     if isinstance(data, dict):
@@ -695,13 +720,14 @@ def find_permalinks(data):
 async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]:
     try:
         urls = subreddit_urls.split(';')
-        
         reddit_session_cookie = await get_email(".env")
         cookies = {'reddit_session': reddit_session_cookie}
-        
+
         async with aiohttp.ClientSession(cookies=cookies) as session:
-            tasks = [fetch_subreddit_json(session, url) for url in urls]
-            results = await asyncio.gather(*tasks)
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor(max_workers=10) as executor:  # Adjust the number of threads (workers) as needed
+                tasks = [loop.run_in_executor(executor, fetch_subreddit_json_sync, session, url.strip()) for url in urls]
+                results = await asyncio.gather(*tasks)
             
             for permalinks in results:
                 for permalink in permalinks:
@@ -719,57 +745,46 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
         logging.exception(f"[Reddit] [JSON MODE] Session Error: {e}")
         await session.close()
 
+def fetch_subreddit_json_sync(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
+    return asyncio.run(fetch_subreddit_json(session, subreddit_url))
+
 async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
-    retries = 0
-    MAX_RETRIES = 1
-    while retries < MAX_RETRIES:
-        try:
-            # Adjust URL for new posts and JSON format
-            url_to_fetch = subreddit_url
-            if "https:/reddit.com" in url_to_fetch:
-                url_to_fetch = url_to_fetch.replace("https:/reddit.com", "https://reddit.com")
-                
-            if random.random() < 0.75:
-                url_to_fetch = url_to_fetch + "/new"
-            url_to_fetch = url_to_fetch + "/.json"
-                
-            if url_to_fetch.endswith("/new/new/.json"):
-                url_to_fetch = url_to_fetch.replace("/new/new/.json", "/new/.json")
+    try:
+        if "https:/reddit.com" in url_to_fetch:
+            url_to_fetch = url_to_fetch.replace("https:/reddit.com", "https://reddit.com")
             
-            logging.info("[Reddit] [JSON MODE] opening: %s", url_to_fetch)
+        if not subreddit_url.startswith("https://"):
+            subreddit_url = "https://" + subreddit_url
+        if not subreddit_url.endswith("/.json"):
+            subreddit_url = subreddit_url.rstrip('/') + "/.json"
+
+        url_to_fetch = subreddit_url
+        if random.random() < 0.75:
+            url_to_fetch = url_to_fetch.replace("/.json", "/new/.json")
             
-            # Make the GET request to Reddit
-            async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
-                
-                if response.status == 429:
-                    # Rate limit encountered, back off and retry
-                    retries += 1
-                    wait_time = 2 ** retries  # Exponential backoff
-                    logging.warning(f"[Reddit] [JSON MODE] Rate limit encountered. Retrying in {wait_time} seconds...")
-                    await asyncio.sleep(wait_time)
-                    continue
+        logging.info("[Reddit] [JSON MODE] opening: %s", url_to_fetch)
+        
+        async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
+            
+            if response.status == 429:
+                logging.warning("[Reddit] [JSON MODE] Rate limit encountered.")
+                return []
 
-                if response.status != 200:
-                    logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status}")
-                    break
+            if response.status != 200:
+                logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status}")
+                return []
 
-                content_type = response.headers.get('Content-Type', '')
-                if 'application/json' not in content_type:
-                    logging.error(f"[Reddit] [JSON MODE] Unexpected content type: {content_type}")
-                    break
+            content_type = response.headers.get('Content-Type', '')
+            if 'application/json' not in content_type:
+                logging.error(f"[Reddit] [JSON MODE] Unexpected content type: {content_type}")
+                return []
 
-                data = await response.json()
-                # Return all "permalink" values
-                return find_permalinks(data)
+            data = await response.json()
+            return find_permalinks(data)
 
-        except Exception as e:
-            retries += 1
-            wait_time = 2 ** retries  # Exponential backoff
-            logging.exception(f"[Reddit] [JSON MODE] Fetch Error: {e}. Retrying in {wait_time} seconds...")
-            await asyncio.sleep(wait_time)
-
-    logging.error(f"[Reddit] [JSON MODE] Failed to fetch after {MAX_RETRIES} retries.")
-    return []
+    except Exception as e:
+        logging.exception(f"[Reddit] [JSON MODE] Fetch Error: {e}")
+        return []
 
 
 DEFAULT_OLDNESS_SECONDS = 36000
