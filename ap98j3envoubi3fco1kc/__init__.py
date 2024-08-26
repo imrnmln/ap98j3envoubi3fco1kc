@@ -652,60 +652,41 @@ def split_strings_subreddit_name(input_string):
     return ' '.join(words)
 
 
-async def scrap_subreddit_new_layout(subreddit_urls: str) -> AsyncGenerator[str, None]:
-    try:
-        urls = subreddit_urls.split(';')
-        reddit_session_cookie = await get_email(".env")
-        cookies = {'reddit_session': reddit_session_cookie}
+async def fetch_subreddit_new_layout_json(session: aiohttp.ClientSession, url: str) -> str:
+    async with session.get(url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
+        if response.status == 429:
+            logging.warning("[Reddit] [NEW LAYOUT MODE] Rate limit encountered for %s.", url)
+            return ''
+        if response.status != 200:
+            logging.error(f"[Reddit] [NEW LAYOUT MODE] Non-200 status code: {response.status} for {url}")
+            return ''
+        return await response.text()
 
-        async with aiohttp.ClientSession(cookies=cookies) as session:
-            loop = asyncio.get_event_loop()
-            with ThreadPoolExecutor(max_workers=10) as executor:
-                tasks = [loop.run_in_executor(executor, fetch_subreddit_new_layout_sync, session, url.strip()) for url in urls]
-                results = await asyncio.gather(*tasks)
-            
-            for permalinks in results:
-                for permalink in permalinks:
+async def scrap_subreddit_new_layout(subreddit_urls: str) -> AsyncGenerator[str, None]:
+    urls = [url.strip() for url in subreddit_urls.split(';')]
+    logging.info("[Reddit] [NEW LAYOUT MODE] Opening: %s",subreddit_urls)
+    reddit_session_cookie = await get_email(".env")
+    cookies = {'reddit_session': reddit_session_cookie}
+
+    async with aiohttp.ClientSession(cookies=cookies) as session:
+        tasks = [fetch_subreddit_new_layout_json(session, url) for url in urls]
+        html_contents = await asyncio.gather(*tasks)
+        
+        for html_content, url in zip(html_contents, urls):
+            if html_content:
+                html_tree = fromstring(html_content)
+                permalinks = html_tree.xpath("//shreddit-post/@permalink")
+                
+                for post in permalinks:
+                    post_url = post
+                    if post_url.startswith("/r/"):
+                        post_url = "https://www.reddit.com" + post_url
                     try:
-                        if "https" not in permalink:
-                            permalink = f"https://reddit.com{permalink}"
-                        async for item in scrap_post(permalink):
+                        async for item in scrap_post(post_url):
                             yield item
                     except Exception as e:
                         logging.exception(f"[Reddit] [NEW LAYOUT MODE] Error detected: {e}")
 
-    except Exception as e:
-        logging.exception(f"[Reddit] [NEW LAYOUT MODE] Session Error: {e}")
-        await session.close()
-
-def fetch_subreddit_new_layout_sync(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
-    return asyncio.run(fetch_subreddit_new_layout(session, subreddit_url))
-
-async def fetch_subreddit_new_layout(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
-    try:
-        if not subreddit_url.startswith("https://"):
-            subreddit_url = "https://" + subreddit_url
-
-        logging.info("[Reddit] [NEW LAYOUT MODE] Opening: %s", subreddit_url)
-        
-        async with session.get(subreddit_url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
-            
-            if response.status == 429:
-                logging.warning("[Reddit] [NEW LAYOUT MODE] Rate limit encountered.")
-                return []
-
-            if response.status != 200:
-                logging.error(f"[Reddit] [NEW LAYOUT MODE] Non-200 status code: {response.status}")
-                return []
-
-            html_content = await response.text()
-            html_tree = fromstring(html_content)
-            permalinks = html_tree.xpath("//shreddit-post/@permalink")
-            return permalinks
-
-    except Exception as e:
-        logging.exception(f"[Reddit] [NEW LAYOUT MODE] Fetch Error: {e}")
-        return []
 
 def find_permalinks(data):
     if isinstance(data, dict):
@@ -717,74 +698,51 @@ def find_permalinks(data):
         for item in data:
             yield from find_permalinks(item)
 
-async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]:
-    try:
-        urls = subreddit_urls.split(';')
-        reddit_session_cookie = await get_email(".env")
-        cookies = {'reddit_session': reddit_session_cookie}
-
-        async with aiohttp.ClientSession(cookies=cookies) as session:
-            loop = asyncio.get_event_loop()
-            with ThreadPoolExecutor(max_workers=10) as executor:  # Adjust the number of threads (workers) as needed
-                tasks = [loop.run_in_executor(executor, fetch_subreddit_json_sync, session, url.strip()) for url in urls]
-                results = await asyncio.gather(*tasks)
-            
-            for permalinks in results:
-                for permalink in permalinks:
-                    try:
-                        if random.random() < SKIP_POST_PROBABILITY:
-                            url = permalink
-                            if "https" not in url:
-                                url = f"https://reddit.com{url}"
-                            async for item in scrap_post(url):
-                                yield item
-                    except Exception as e:
-                        logging.exception(f"[Reddit] [JSON MODE] Error detected: {e}")
-
-    except Exception as e:
-        logging.exception(f"[Reddit] [JSON MODE] Session Error: {e}")
-        await session.close()
-
-def fetch_subreddit_json_sync(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
-    return asyncio.run(fetch_subreddit_json(session, subreddit_url))
-
-async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
-    try:
-        if not subreddit_url.startswith("https://"):
-            subreddit_url = "https://" + subreddit_url
-        if not subreddit_url.endswith("/.json"):
-            subreddit_url = subreddit_url.rstrip('/') + "/.json"
-
-        url_to_fetch = subreddit_url
-        if "https:/reddit.com" in url_to_fetch:
-            url_to_fetch = url_to_fetch.replace("https:/reddit.com", "https://reddit.com")
-            
-        if random.random() < 0.75:
-            url_to_fetch = url_to_fetch.replace("/.json", "/new/.json")
-            
-        logging.info("[Reddit] [JSON MODE] opening: %s", url_to_fetch)
+async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> dict:
+    url_to_fetch = subreddit_url
+    if "https:/reddit.com" in url_to_fetch:
+        url_to_fetch = url_to_fetch.replace("https:/reddit.com", "https://reddit.com")
         
-        async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
-            
-            if response.status == 429:
-                logging.warning("[Reddit] [JSON MODE] Rate limit encountered.")
-                return []
+    if random.random() < 0.75:
+        url_to_fetch = url_to_fetch + "/new"
+    url_to_fetch = url_to_fetch + "/.json"
+        
+    if url_to_fetch.endswith("/new/new/.json"):
+        url_to_fetch = url_to_fetch.replace("/new/new/.json", "/new/.json")
+    
+    logging.info("[Reddit] [JSON MODE] opening: %s", url_to_fetch)
+    async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
+        if response.status == 429:
+            logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
+            return {}
+        if response.status != 200:
+            logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status} for {url_to_fetch}")
+            return {}
+        return await response.json()
 
-            if response.status != 200:
-                logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status}")
-                return []
+async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]:
+    urls = [url.strip() for url in subreddit_urls.split(';')]
+    reddit_session_cookie = await get_email(".env")
+    cookies = {'reddit_session': reddit_session_cookie}
 
-            content_type = response.headers.get('Content-Type', '')
-            if 'application/json' not in content_type:
-                logging.error(f"[Reddit] [JSON MODE] Unexpected content type: {content_type}")
-                return []
+    async with aiohttp.ClientSession(cookies=cookies) as session:
+        tasks = [fetch_subreddit_json(session, url) for url in urls]
+        json_responses = await asyncio.gather(*tasks)
+        
+        for data, url in zip(json_responses, urls):
+            if data:
+                permalinks = list(find_permalinks(data))
+                for permalink in permalinks:
+                    if random.random() < SKIP_POST_PROBABILITY:
+                        post_url = permalink
+                        if not post_url.startswith("https://"):
+                            post_url = f"https://reddit.com{post_url}"
+                        try:
+                            async for item in scrap_post(post_url):
+                                yield item
+                        except Exception as e:
+                            logging.exception(f"[Reddit] [JSON MODE] Error detected: {e}")
 
-            data = await response.json()
-            return find_permalinks(data)
-
-    except Exception as e:
-        logging.exception(f"[Reddit] [JSON MODE] Fetch Error: {e}")
-        return []
 
 
 DEFAULT_OLDNESS_SECONDS = 36000
