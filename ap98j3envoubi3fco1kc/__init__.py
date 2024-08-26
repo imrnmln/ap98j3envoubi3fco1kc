@@ -734,7 +734,7 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
             url_to_fetch = url_to_fetch + "/.json"
                 
             if url_to_fetch.endswith("/new/new/.json"):
-                url_to_fetch = url_to_fetch.replace("/new/new/.json", "/new.json")
+                url_to_fetch = url_to_fetch.replace("/new/new/.json", "/new/.json")
             
             logging.info("[Reddit] [JSON MODE] opening: %s", url_to_fetch)
             
