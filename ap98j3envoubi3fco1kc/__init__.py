@@ -721,7 +721,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
 
 async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
     retries = 0
-    MAX_RETRIES = 0
+    MAX_RETRIES = 1
     while retries < MAX_RETRIES:
         try:
             # Adjust URL for new posts and JSON format
