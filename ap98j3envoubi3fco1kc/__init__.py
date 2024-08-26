@@ -720,24 +720,53 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
         await session.close()
 
 async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> List[str]:
-    try:
-        url_to_fetch = subreddit_url
-        if random.random() < 0.75:
-            url_to_fetch = url_to_fetch + "/new"
-        url_to_fetch = url_to_fetch + "/.json"
+    retries = 0
+    MAX_RETRIES = 5
+    while retries < MAX_RETRIES:
+        try:
+            # Adjust URL for new posts and JSON format
+            url_to_fetch = subreddit_url
+            if random.random() < 0.75:
+                url_to_fetch = url_to_fetch + "/new"
+            url_to_fetch = url_to_fetch + "/.json"
                 
-        if url_to_fetch.endswith("/new/new/.json"):
-            url_to_fetch = url_to_fetch.replace("/new/new/.json", "/new.json")
-        
-        logging.info("[Reddit] [JSON MODE] opening: %s", url_to_fetch)
-        
-        async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
-            data = await response.json()
-            return find_permalinks(data)
+            if url_to_fetch.endswith("/new/new/.json"):
+                url_to_fetch = url_to_fetch.replace("/new/new/.json", "/new.json")
+            
+            logging.info("[Reddit] [JSON MODE] opening: %s", url_to_fetch)
+            
+            # Make the GET request to Reddit
+            async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
+                
+                if response.status == 429:
+                    # Rate limit encountered, back off and retry
+                    retries += 1
+                    wait_time = 2 ** retries  # Exponential backoff
+                    logging.warning(f"[Reddit] [JSON MODE] Rate limit encountered. Retrying in {wait_time} seconds...")
+                    await asyncio.sleep(wait_time)
+                    continue
 
-    except Exception as e:
-        logging.exception(f"[Reddit] [JSON MODE] Fetch Error: {e}")
-        return []
+                if response.status != 200:
+                    logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status}")
+                    break
+
+                content_type = response.headers.get('Content-Type', '')
+                if 'application/json' not in content_type:
+                    logging.error(f"[Reddit] [JSON MODE] Unexpected content type: {content_type}")
+                    break
+
+                data = await response.json()
+                # Return all "permalink" values
+                return find_permalinks(data)
+
+        except Exception as e:
+            retries += 1
+            wait_time = 2 ** retries  # Exponential backoff
+            logging.exception(f"[Reddit] [JSON MODE] Fetch Error: {e}. Retrying in {wait_time} seconds...")
+            await asyncio.sleep(wait_time)
+
+    logging.error(f"[Reddit] [JSON MODE] Failed to fetch after {MAX_RETRIES} retries.")
+    return []
 
 
 DEFAULT_OLDNESS_SECONDS = 36000
