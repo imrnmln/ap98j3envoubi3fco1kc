@@ -614,6 +614,10 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
             async with session.get(_url, 
                 headers={"User-Agent": random.choice(USER_AGENT_LIST)},     
                 timeout=BASE_TIMEOUT) as response:
+                if response.status == 429:
+                    logging.warning("[Reddit] Scraping - getting Rate limit encountered for %s.", _url)
+                    await asyncio.sleep(120)
+                    
                 response = await response.json()
                 [_post, comments] = response
                 try:
