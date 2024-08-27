@@ -860,7 +860,6 @@ async def query(parameters: dict) -> AsyncGenerator[Item, None]:
     logging.info(f"[Reddit] Input parameters: {parameters}")
     MAX_EXPIRATION_SECONDS = max_oldness_seconds
     yielded_items = 0  # Counter for the number of yielded items
-    MAXIMUM_ITEMS_TO_COLLECT = 10
 
     
     await asyncio.sleep(random.uniform(3, 15))
