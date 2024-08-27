@@ -726,7 +726,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
     urls = [url.strip() for url in subreddit_urls.split(';')]
     reddit_session_cookie = await get_email(".env")
     cookies = {'reddit_session': reddit_session_cookie}
-
+    logging.info("[Reddit] [JSON MODE] opening urls: %s", urls)
     async with aiohttp.ClientSession(cookies=cookies) as session:
         tasks = [fetch_subreddit_json(session, url) for url in urls]
         json_responses = await asyncio.gather(*tasks)
