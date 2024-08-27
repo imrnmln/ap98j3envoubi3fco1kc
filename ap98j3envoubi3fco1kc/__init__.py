@@ -656,6 +656,7 @@ async def fetch_subreddit_new_layout_json(session: aiohttp.ClientSession, url: s
     async with session.get(url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [NEW LAYOUT MODE] Rate limit encountered for %s.", url)
+            await asyncio.sleep(30)
             return ''
         if response.status != 200:
             logging.error(f"[Reddit] [NEW LAYOUT MODE] Non-200 status code: {response.status} for {url}")
