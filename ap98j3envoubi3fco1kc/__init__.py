@@ -728,7 +728,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
 
     async with aiohttp.ClientSession(cookies=cookies) as session:
         tasks = [fetch_subreddit_json(session, url) for url in urls]
-        json_responses = await .gather(*tasks)
+        json_responses = await asyncio.gather(*tasks)
         
         for data, url in zip(json_responses, urls):
             if data:
