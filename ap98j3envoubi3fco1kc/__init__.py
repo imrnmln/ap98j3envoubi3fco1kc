@@ -714,7 +714,7 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
-            await asyncio.sleep(180)
+            await asyncio.sleep(30)
             return await fetch_subreddit_json(session, url_to_fetch) 
         if response.status != 200:
             logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status} for {url_to_fetch}")
@@ -734,6 +734,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
             if data:
                 permalinks = list(find_permalinks(data))
                 for permalink in permalinks:
+                    logging.warning("[Reddit] [JSON MODE] find permalink, check post probability for %s.", permalink)
                     if random.random() < SKIP_POST_PROBABILITY:
                         post_url = permalink
                         if not post_url.startswith("https://"):
