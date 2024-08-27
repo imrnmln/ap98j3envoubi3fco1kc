@@ -695,7 +695,7 @@ async def scrap_subreddit_new_layout(subreddit_urls: str) -> AsyncGenerator[str,
 
 def find_permalinks(data):
     if isinstance(data, dict):
-        if 'permalink' in data:
+        if 'permalink' in data and is_within_timeframe_seconds(data['created_utc'], 86400):
             yield data['permalink']
         for key, value in data.items():
             yield from find_permalinks(value)
