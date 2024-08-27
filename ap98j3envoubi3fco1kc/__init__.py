@@ -716,7 +716,7 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
             await asyncio.sleep(30)
-            return await fetch_subreddit_json(session, url_to_fetch) 
+            return {} 
         if response.status != 200:
             logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status} for {url_to_fetch}")
             return {}
