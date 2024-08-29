@@ -789,22 +789,22 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
-            #await asyncio.sleep(60)
-            proxy = await manage_proxies()
-            if proxy:
-                is_proxy_valid = await test_proxy(session, proxy)
-                if not is_proxy_valid:
-                    logging.warning(f"Skipping invalid proxy: {proxy}")
-                    return {}
-            logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
-            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
-                if proxy_response.status == 200:
-                    logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-                    data = await proxy_response.json()
-                    return data
-                else:
-                    logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-                    return {}
+            await asyncio.sleep(60)
+            # proxy = await manage_proxies()
+            # if proxy:
+            #     is_proxy_valid = await test_proxy(session, proxy)
+            #     if not is_proxy_valid:
+            #         logging.warning(f"Skipping invalid proxy: {proxy}")
+            #         return {}
+            # logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
+            # async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
+            #     if proxy_response.status == 200:
+            #         logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+            #         data = await proxy_response.json()
+            #         return data
+            #     else:
+            #         logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+            #         return {}
             return {} 
         if response.status != 200:
             logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status} for {url_to_fetch}")
