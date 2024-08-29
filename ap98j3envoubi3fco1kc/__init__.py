@@ -473,11 +473,11 @@ async def fetch_proxies(session, url):
             content = await response.text()
             tree = html.fromstring(content)
             proxies = []
-            rows = tree.xpath('//table[@id="proxylisttable"]/tbody/tr')
+            rows = tree.xpath('/html/body/section[1]/div/div[2]/div/table/tbody/tr')
             for row in rows:
-                ip = row.xpath('./td[1]/text()')[0]
-                port = row.xpath('./td[2]/text()')[0]
-                proxy = f"{ip}:{port}"
+                ip = row.xpath('td[1]/text()')[0]
+                port = row.xpath('td[2]/text()')[0]
+                proxy = f"http://{ip}:{port}"
                 proxies.append(proxy)
 
             return proxies
