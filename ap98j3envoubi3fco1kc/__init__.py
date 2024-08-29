@@ -675,7 +675,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
     resolvers = {"Listing": listing, "t1": comment, "t3": post, "more": more}
     try:
         async with aiohttp.ClientSession() as session:
-            _url = url + ".json"
+            _url = url + ".json?sort=new"
             logging.info(f"[Reddit] Scraping - getting {_url}")
             reddit_session_cookie = await get_email(".env") 
             cookies = {'reddit_session': reddit_session_cookie}
