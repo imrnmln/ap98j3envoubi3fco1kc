@@ -468,11 +468,10 @@ async def set_session_cookies(session):
 
 async def fetch_proxies(session, url):
     async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+        print(f"Response retrieve proxies: {response.status}")
         if response.status == 200:
             content = await response.text()
             tree = html.fromstring(content)
-            
-            # Extract IP addresses and ports from the table
             proxies = []
             rows = tree.xpath('//table[@id="proxylisttable"]/tbody/tr')
             for row in rows:
@@ -490,6 +489,7 @@ async def get_proxy():
     url = "https://www.sslproxies.org/"
     async with aiohttp.ClientSession() as session:
         proxies = await fetch_proxies(session, url)
+        logging.info("[Reddit] generating proxies. ", proxies)
         if proxies:
             return random.choice(proxies)
         else:
