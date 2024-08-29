@@ -477,7 +477,7 @@ async def fetch_proxies(session, url):
             for row in rows:
                 ip = row.xpath('td[1]/text()')[0]
                 port = row.xpath('td[2]/text()')[0]
-                proxy = f"http://{ip}:{port}"
+                proxy = f"https://{ip}:{port}"
                 proxies.append(proxy)
 
             return proxies
@@ -489,7 +489,6 @@ async def get_proxy():
     url = "https://www.sslproxies.org/"
     async with aiohttp.ClientSession() as session:
         proxies = await fetch_proxies(session, url)
-        logging.info("[Reddit] generating proxies. %s ", '#'.join(proxies))
         if proxies:
             return random.choice(proxies)
         else:
