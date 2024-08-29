@@ -475,10 +475,12 @@ async def fetch_proxies(session, url):
             proxies = []
             rows = tree.xpath('/html/body/section[1]/div/div[2]/div/table/tbody/tr')
             for row in rows:
-                ip = row.xpath('td[1]/text()')[0]
-                port = row.xpath('td[2]/text()')[0]
-                proxy = f"https://{ip}:{port}"
-                proxies.append(proxy)
+                last_checked_text = row.xpath('.//td[8]/text()')[0]
+                if not "hour" in last_checked_text:
+                    ip = row.xpath('.//td[1]/text()')[0]
+                    port = row.xpath('.//td[2]/text()')[0]
+                    protocol = "https" if "yes" in row.xpath('.//td[7]/text()')[0].lower() else "http"
+                    proxies.append(f"{protocol}://{ip}:{port}")
 
             return proxies
         else:
@@ -493,6 +495,16 @@ async def get_proxy():
             return random.choice(proxies)
         else:
             return None
+
+async def test_proxy(session, proxy):
+    try:
+        test_url = "https://www.reddit.com"
+        async with session.get(test_url, proxy=proxy, timeout=10) as response:
+            if response.status == 200:
+                return True
+    except Exception as e:
+        logging.warning(f"Proxy {proxy} failed: {e}")
+    return False
 
 async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
     """
@@ -749,6 +761,11 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
             logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
             #await asyncio.sleep(60)
             proxy = await get_proxy()
+            if proxy:
+                is_proxy_valid = await test_proxy(session, proxy)
+                if not is_proxy_valid:
+                    logging.warning(f"Skipping invalid proxy: {proxy}")
+                    return {}
             logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
             async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
                 if proxy_response.status == 200:
