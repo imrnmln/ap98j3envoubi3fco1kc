@@ -815,11 +815,13 @@ async def fetch_and_scrap_post(permalink):
     post_url = permalink
     if not post_url.startswith("https://"):
         post_url = f"https://reddit.com{post_url}"
+    items = []
     try:
         async for item in scrap_post(post_url):
-            yield item
+            items.append(item)
     except Exception as e:
         logging.exception(f"[Reddit] [JSON MODE] Error detected: {e}")
+    return items
 
 async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]:
     urls = [url.strip() for url in subreddit_urls.split(';')]
