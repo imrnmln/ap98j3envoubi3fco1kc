@@ -811,6 +811,16 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
             return {}
         return await response.json()
 
+async def fetch_and_scrap_post(permalink):
+    post_url = permalink
+    if not post_url.startswith("https://"):
+        post_url = f"https://reddit.com{post_url}"
+    try:
+        async for item in scrap_post(post_url):
+            yield item
+    except Exception as e:
+        logging.exception(f"[Reddit] [JSON MODE] Error detected: {e}")
+
 async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]:
     urls = [url.strip() for url in subreddit_urls.split(';')]
     reddit_session_cookie = await get_email(".env")
@@ -823,17 +833,29 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
         for data, url in zip(json_responses, urls):
             if data:
                 permalinks = list(find_permalinks(data))
+                tasks = []
                 for permalink in permalinks:
                     logging.warning("[Reddit] [JSON MODE] find permalink, check post probability for %s.", permalink)
-                    #if random.random() < SKIP_POST_PROBABILITY:
-                    post_url = permalink
-                    if not post_url.startswith("https://"):
-                        post_url = f"https://reddit.com{post_url}"
-                    try:
-                        async for item in scrap_post(post_url):
+                    tasks.append(fetch_and_scrap_post(permalink))
+            
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for result in results:
+                    if isinstance(result, Exception):
+                        logging.error(f"[Reddit] [JSON MODE] Error in task: {result}")
+                    else:
+                        for item in result:
                             yield item
-                    except Exception as e:
-                        logging.exception(f"[Reddit] [JSON MODE] Error detected: {e}")
+                # for permalink in permalinks:
+                #     logging.warning("[Reddit] [JSON MODE] find permalink, check post probability for %s.", permalink)
+                #     #if random.random() < SKIP_POST_PROBABILITY:
+                #     post_url = permalink
+                #     if not post_url.startswith("https://"):
+                #         post_url = f"https://reddit.com{post_url}"
+                #     try:
+                #         async for item in scrap_post(post_url):
+                #             yield item
+                #     except Exception as e:
+                #         logging.exception(f"[Reddit] [JSON MODE] Error detected: {e}")
 
 
 
