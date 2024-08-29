@@ -489,7 +489,7 @@ async def get_proxy():
     url = "https://www.sslproxies.org/"
     async with aiohttp.ClientSession() as session:
         proxies = await fetch_proxies(session, url)
-        logging.info("[Reddit] generating proxies. ", proxies)
+        logging.info("[Reddit] generating proxies. %s ", '#'.join(proxies))
         if proxies:
             return random.choice(proxies)
         else:
