@@ -468,7 +468,7 @@ async def set_session_cookies(session):
 
 async def fetch_proxies(session, url):
     async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
-        print(f"Response retrieve proxies: {response.status}")
+        logging.info(f"Response retrieve proxies: {response.status}")
         if response.status == 200:
             content = await response.text()
             tree = html.fromstring(content)
@@ -482,7 +482,7 @@ async def fetch_proxies(session, url):
 
             return proxies
         else:
-            print(f"Failed to retrieve proxies: {response.status}")
+            logging.info(f"Failed to retrieve proxies: {response.status}")
             return []
 
 async def get_proxy():
