@@ -39,6 +39,7 @@ global SKIP_POST_PROBABILITY
 MAX_EXPIRATION_SECONDS = 80000
 SKIP_POST_PROBABILITY = 0.1
 BASE_TIMEOUT = 30
+PROXIES_FILE = "proxies.json"
 
 subreddits_top_225 = [
     "r/all",
@@ -492,7 +493,7 @@ async def get_proxy():
     async with aiohttp.ClientSession() as session:
         proxies = await fetch_proxies(session, url)
         if proxies:
-            return random.choice(proxies)
+            return proxies
         else:
             return None
 
@@ -505,6 +506,35 @@ async def test_proxy(session, proxy):
     except Exception as e:
         logging.warning(f"Proxy {proxy} failed: {e}")
     return False
+
+# Function to load proxies from JSON file
+def load_proxies():
+    if os.path.exists(PROXIES_FILE):
+        with open(PROXIES_FILE, "r") as file:
+            data = json.load(file)
+            timestamp = datetime.fromisoformat(data["timestamp"])
+            proxies = data["proxies"]
+            return timestamp, proxies
+    return None, None
+
+def save_proxies(proxies):
+    data = {
+        "timestamp": datetime.now().isoformat(),
+        "proxies": proxies
+    }
+    with open(PROXIES_FILE, "w") as file:
+        json.dump(data, file)
+
+async def manage_proxies():
+    timestamp, proxies = load_proxies()
+    if not timestamp or (datetime.now() - timestamp > timedelta(minutes=30)):
+        logging.info("Fetching new proxies...")
+        proxies = await get_proxy()
+        save_proxies(proxies)
+    else:
+        logging.info("Using existing proxies from JSON file.")
+    
+    return random.choice(proxies)
 
 async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
     """
@@ -760,7 +790,7 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
             #await asyncio.sleep(60)
-            proxy = await get_proxy()
+            proxy = await manage_proxies()
             if proxy:
                 is_proxy_valid = await test_proxy(session, proxy)
                 if not is_proxy_valid:
