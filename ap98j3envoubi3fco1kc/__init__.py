@@ -466,6 +466,35 @@ async def set_session_cookies(session):
     logger.info("[Reddit] Session cookies updated")
 
 
+async def fetch_proxies(session, url):
+    async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+        if response.status == 200:
+            content = await response.text()
+            tree = html.fromstring(content)
+            
+            # Extract IP addresses and ports from the table
+            proxies = []
+            rows = tree.xpath('//table[@id="proxylisttable"]/tbody/tr')
+            for row in rows:
+                ip = row.xpath('./td[1]/text()')[0]
+                port = row.xpath('./td[2]/text()')[0]
+                proxy = f"{ip}:{port}"
+                proxies.append(proxy)
+
+            return proxies
+        else:
+            print(f"Failed to retrieve proxies: {response.status}")
+            return []
+
+async def get_proxy():
+    url = "https://www.sslproxies.org/"
+    async with aiohttp.ClientSession() as session:
+        proxies = await fetch_proxies(session, url)
+        if proxies:
+            return random.choice(proxies)
+        else:
+            return None
+
 async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
     """
     Generate a subreddit URL using the search tool with `keyword`.
@@ -719,7 +748,16 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
-            await asyncio.sleep(60)
+            #await asyncio.sleep(60)
+            logging.warning("Rate limit encountered. Retrying with proxy.")
+            proxy = await get_proxy()
+            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
+                if proxy_response.status == 200:
+                    data = await proxy_response.json()
+                    return data
+                else:
+                    logging.error(f"Failed to fetch {url} with proxy: {proxy_response.status}")
+                    return {}
             return {} 
         if response.status != 200:
             logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status} for {url_to_fetch}")
