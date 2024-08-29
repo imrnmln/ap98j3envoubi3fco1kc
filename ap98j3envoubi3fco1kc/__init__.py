@@ -752,6 +752,7 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
             logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
             async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
                 if proxy_response.status == 200:
+                    logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                     data = await proxy_response.json()
                     return data
                 else:
