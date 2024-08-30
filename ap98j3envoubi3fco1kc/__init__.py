@@ -596,19 +596,28 @@ def save_proxies(proxies):
 
 async def manage_proxies():
     timestamp, proxies = load_proxies()
-    if not timestamp or (datett.now() - timestamp > timedelta(minutes=15)):
-        logging.info("Fetching new proxies...")
+    if not proxies:
+        logging.info("No proxies left, fetching new proxies...")
         proxies = await get_proxy()
         save_proxies(proxies)
-    else:
-        if proxies:
-            logging.info("Using existing proxies from JSON file.")
-        else:
-            logging.info("Fetching new proxies...")
-            proxies = await get_proxy()
-            save_proxies(proxies)
     
-    return random.choice(proxies)
+    return random.choice(proxies) if proxies else None
+
+# async def manage_proxies():
+#     timestamp, proxies = load_proxies()
+#     if not timestamp or (datett.now() - timestamp > timedelta(minutes=15)):
+#         logging.info("Fetching new proxies...")
+#         proxies = await get_proxy()
+#         save_proxies(proxies)
+#     else:
+#         if proxies:
+#             logging.info("Using existing proxies from JSON file.")
+#         else:
+#             logging.info("Fetching new proxies...")
+#             proxies = await get_proxy()
+#             save_proxies(proxies)
+    
+#     return random.choice(proxies)
 
 async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
     """
