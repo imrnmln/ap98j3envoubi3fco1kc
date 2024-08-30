@@ -763,6 +763,15 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                         except asyncio.TimeoutError:
                             logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
                             response = {}
+                        except aiohttp.ClientOSError as e:
+                            logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
+                            response = {}
+                        except aiohttp.ServerDisconnectedError as e:
+                            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}")
+                            response = {}
+                        except aiohttp.ClientError as e:
+                            logging.error(f"ClientError {e} on attempt for URL {url_to_fetch} with proxy {proxy}")
+                            response = {}
                                 
                     else:
                         logging.error(f"Proxies not found")
@@ -877,6 +886,13 @@ async def fetch_with_proxy(session, url_to_fetch):
         except asyncio.TimeoutError:
             logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
             return {}
+        except aiohttp.ClientOSError as e:
+            logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
+        except aiohttp.ServerDisconnectedError as e:
+            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}")
+        except aiohttp.ClientError as e:
+            logging.error(f"ClientError {e} on attempt for URL {url_to_fetch} with proxy {proxy}")
+
                 
     else:
         logging.error(f"Proxies not found")
