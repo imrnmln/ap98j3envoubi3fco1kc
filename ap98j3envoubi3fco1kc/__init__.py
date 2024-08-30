@@ -472,10 +472,9 @@ async def test_proxy(session, proxy, test_url):
     try:
         async with session.get(test_url, proxy=proxy, timeout=10) as response:
             if response.status == 200:
-                logging.info(f"Proxy {proxy} is valid")
                 return True
     except Exception as e:
-        logging.warning(f"Proxy {proxy} failed: {e}")
+        print(f"Proxy {proxy} failed: {e}")
     return False
 
 async def fetch_proxies(session, url):
