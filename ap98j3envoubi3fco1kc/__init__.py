@@ -484,14 +484,20 @@ async def fetch_proxies(session, url):
                     protocol = "https" if "yes" in row.xpath('.//td[7]/text()')[0].lower() else "http"
                     proxy = f"{protocol}://{ip}:{port}"
                     if "https" in proxy:
-                        is_proxy_valid = await test_proxy(session, proxy, "https://www.reddit.com")
+                        is_proxy_valid = await test_proxy(session, proxy, "https://reddit.com")
                         if not is_proxy_valid:
-                            logging.warning(f"Skipping invalid proxy: {proxy}")
+                            logging.warning(f"HTPPS failed, try for http: {proxy}")
+                            is_proxy_valid = await test_proxy(session, proxy.replace("https","http"), "http://reddit.com")
+                            if not is_proxy_valid:
+                                logging.warning(f"Skipping invalid proxy: {proxy}")
+                            else:
+                                logging.warning(f"Found valid proxy: {proxy}")
+                                proxies.append(proxy.replace("https","http"))
                         else:
                             logging.warning(f"Found valid proxy: {proxy}")
                             proxies.append(proxy)
                     else:
-                        is_proxy_valid = await test_proxy(session, proxy, "http://www.reddit.com")
+                        is_proxy_valid = await test_proxy(session, proxy, "http://reddit.com")
                         if not is_proxy_valid:
                             logging.warning(f"Skipping invalid proxy: {proxy}")
                         else:
@@ -1017,6 +1023,7 @@ async def query(parameters: dict) -> AsyncGenerator[Item, None]:
     for i in range(nb_subreddit_attempts):
         await asyncio.sleep(random.uniform(1, i))
         url = await generate_url(**parameters["url_parameters"])
+        await manage_proxies()
         # if url ends with "/new/new/.json", replace it with "/new.json"
         if url.endswith("/new/new/.json"):
             url = url.replace("/new/new/.json", "/new.json")
