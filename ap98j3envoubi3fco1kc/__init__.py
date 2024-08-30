@@ -1,6 +1,6 @@
 import random
 import aiohttp
-from aiohttp.client_exceptions import ContentLengthError, ClientError, ServerDisconnectedError, ClientHttpProxyError
+from aiohttp.client_exceptions import ContentLengthError, ServerDisconnectedError, ClientHttpProxyError
 import dotenv
 import os
 import json
@@ -805,9 +805,6 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                             remove_proxies(proxy)
                             logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
                             response = {}
-                        except ContentLengthError as e:
-                            logging.error(f"ContentLengthError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-                            response = {}
                         except ClientHttpProxyError as e:
                             remove_proxies(proxy)
                             logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
@@ -816,6 +813,8 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                             remove_proxies(proxy)
                             logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
                             response = {}
+                        except Exception as e:
+                            logging.error(f"Unexpected error on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
                                 
                     else:
                         logging.error(f"Proxies not found")
@@ -949,9 +948,6 @@ async def fetch_with_proxy(session, url_to_fetch):
             remove_proxies(proxy)
             logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
             return {}
-        except ContentLengthError as e:
-            logging.error(f"ContentLengthError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-            return {}
         except ClientHttpProxyError as e:
             remove_proxies(proxy)
             logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
@@ -960,6 +956,8 @@ async def fetch_with_proxy(session, url_to_fetch):
             remove_proxies(proxy)
             logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
             return {}
+        except Exception as e:
+            logging.error(f"Unexpected error on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
                 
     else:
         logging.error(f"Proxies not found")
