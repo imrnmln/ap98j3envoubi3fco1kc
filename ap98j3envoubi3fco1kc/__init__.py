@@ -1,6 +1,6 @@
 import random
 import aiohttp
-from aiohttp.client_exceptions import ContentLengthError, ServerDisconnectedError, ClientHttpProxyError
+from aiohttp.client_exceptions import ClientError, ServerDisconnectedError, ClientHttpProxyError
 import dotenv
 import os
 import json
