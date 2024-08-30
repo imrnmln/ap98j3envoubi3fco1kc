@@ -1,6 +1,6 @@
 import random
 import aiohttp
-from aiohttp.client_exceptions import ContentLengthError, ClientError, ServerDisconnectedError
+from aiohttp.client_exceptions import ContentLengthError, ClientError, ServerDisconnectedError, ClientHttpProxyError
 import dotenv
 import os
 import json
@@ -808,6 +808,10 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                         except ContentLengthError as e:
                             logging.error(f"ContentLengthError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
                             response = {}
+                        except ClientHttpProxyError as e:
+                            remove_proxies(proxy)
+                            logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                            response = {}
                         except ClientError as e:
                             remove_proxies(proxy)
                             logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
@@ -947,6 +951,10 @@ async def fetch_with_proxy(session, url_to_fetch):
             return {}
         except ContentLengthError as e:
             logging.error(f"ContentLengthError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return {}
+        except ClientHttpProxyError as e:
+            remove_proxies(proxy)
+            logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
             return {}
         except ClientError as e:
             remove_proxies(proxy)
