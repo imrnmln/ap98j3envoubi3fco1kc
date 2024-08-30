@@ -601,7 +601,12 @@ async def manage_proxies():
         proxies = await get_proxy()
         save_proxies(proxies)
     else:
-        logging.info("Using existing proxies from JSON file.")
+        if proxies:
+            logging.info("Using existing proxies from JSON file.")
+        else:
+            logging.info("Fetching new proxies...")
+            proxies = await get_proxy()
+            save_proxies(proxies)
     
     return random.choice(proxies)
 
