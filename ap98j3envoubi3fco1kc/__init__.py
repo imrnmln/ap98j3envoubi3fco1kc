@@ -840,7 +840,13 @@ async def fetch_with_proxy(session, url_to_fetch):
                     content_type = proxy_response.headers.get('Content-Type', '')
                     if 'application/json' in content_type:
                         logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-                        return await proxy_response.json()
+                        json_data = await proxy_response.json()
+                        for post in json_data.get('data', {}).get('children', []):
+                            permalink = post.get('data', {}).get('permalink')
+                            if permalink:
+                                logging.info(f"Found permalink: {permalink}")
+                                
+                        return json_data
                     else:
                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                         return {}
