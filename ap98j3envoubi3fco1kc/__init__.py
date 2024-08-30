@@ -482,7 +482,21 @@ async def fetch_proxies(session, url):
                     ip = row.xpath('.//td[1]/text()')[0]
                     port = row.xpath('.//td[2]/text()')[0]
                     protocol = "https" if "yes" in row.xpath('.//td[7]/text()')[0].lower() else "http"
-                    proxies.append(f"{protocol}://{ip}:{port}")
+                    proxy = f"{protocol}://{ip}:{port}"
+                    if "https" in proxy:
+                        is_proxy_valid = await test_proxy(session, proxy, "https://www.reddit.com")
+                        if not is_proxy_valid:
+                            logging.warning(f"Skipping invalid proxy: {proxy}")
+                        else:
+                            logging.warning(f"Found valid proxy: {proxy}")
+                            proxies.append(proxy)
+                    else:
+                        is_proxy_valid = await test_proxy(session, proxy, "http://www.reddit.com")
+                        if not is_proxy_valid:
+                            logging.warning(f"Skipping invalid proxy: {proxy}")
+                        else:
+                            logging.warning(f"Found valid proxy: {proxy}")
+                            proxies.append(proxy)
 
             return proxies
         else:
@@ -687,9 +701,10 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                 timeout=BASE_TIMEOUT) as response:
                 if response.status == 429:
                     logging.warning("[Reddit] Scraping - getting Rate limit encountered for %s.", _url)
-                    await asyncio.sleep(60)
+                    response = await fetch_with_proxy(session, _url)
+                else:
+                    response = await response.json()
                     
-                response = await response.json()
                 [_post, comments] = response
                 try:
                     async for item in kind(_post):
@@ -731,7 +746,7 @@ async def fetch_subreddit_new_layout_json(session: aiohttp.ClientSession, url: s
     async with session.get(url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [NEW LAYOUT MODE] Rate limit encountered for %s.", url)
-            await asyncio.sleep(60)
+            await asyncio.sleep(30)
             return ''
         if response.status != 200:
             logging.error(f"[Reddit] [NEW LAYOUT MODE] Non-200 status code: {response.status} for {url}")
@@ -774,6 +789,29 @@ def find_permalinks(data):
         for item in data:
             yield from find_permalinks(item)
 
+async def fetch_with_proxy(session, url_to_fetch):
+    proxy = await manage_proxies()
+    if proxy:
+        if not "https" in proxy:
+            url_to_fetch = url_to_fetch.replace("https", "http")
+        logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
+        async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
+            if proxy_response.status == 200:
+                content_type = response.headers.get('Content-Type', '')
+                if 'application/json' in content_type:
+                    logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                    return await proxy_response.json()
+                else:
+                    logging.error(f"Unexpected content type: {content_type}, URL: {url}")
+                    logging.error(f"Response content: {await response.text()}")
+                    return {}
+            else:
+                logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                return {}
+    else:
+        logging.error(f"Proxies not found")
+        return {}
+        
 async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> dict:
     url_to_fetch = subreddit_url
     if "https:/reddit.com" in url_to_fetch:
@@ -790,30 +828,25 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
+            return await fetch_with_proxy(session, url_to_fetch)
             # await asyncio.sleep(60)
-            proxy = await manage_proxies()
-            if proxy:
-                if "https" in proxy:
-                    is_proxy_valid = await test_proxy(session, proxy, "https://www.reddit.com")
-                    if not is_proxy_valid:
-                        logging.warning(f"Skipping invalid proxy: {proxy}")
-                        return {}
-                else:
-                    is_proxy_valid = await test_proxy(session, proxy, "http://www.reddit.com")
-                    if not is_proxy_valid:
-                        logging.warning(f"Skipping invalid proxy: {proxy}")
-                        return {}
-                    else:
-                        url_to_fetch = url_to_fetch.replace("https", "http")
-            logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
-            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
-                if proxy_response.status == 200:
-                    logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-                    data = await proxy_response.json()
-                    return data
-                else:
-                    logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-                    return {}
+            # proxy = await manage_proxies()
+            # if proxy:
+            #     if not "https" in proxy:
+            #         url_to_fetch = url_to_fetch.replace("https", "http")
+            #     logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
+            #     async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
+            #         if proxy_response.status == 200:
+            #             content_type = response.headers.get('Content-Type', '')
+            #             if 'application/json' in content_type:
+            #                 logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+            #                 return await proxy_response.json()
+            #             else:
+            #                 logging.error(f"Unexpected content type: {content_type}, URL: {url}")
+            #                 logging.error(f"Response content: {await response.text()}")
+            #         else:
+            #             logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+            #             return {}
             return {} 
         if response.status != 200:
             logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status} for {url_to_fetch}")
