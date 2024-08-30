@@ -790,7 +790,7 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
-            await asyncio.sleep(60)
+            # await asyncio.sleep(60)
             proxy = await manage_proxies()
             if proxy:
                 if "https" in proxy:
