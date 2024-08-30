@@ -579,7 +579,7 @@ def save_proxies(proxies):
 
 async def manage_proxies():
     timestamp, proxies = load_proxies()
-    if not timestamp or (datett.now() - timestamp > timedelta(minutes=10)):
+    if not timestamp or (datett.now() - timestamp > timedelta(minutes=15)):
         logging.info("Fetching new proxies...")
         proxies = await get_proxy()
         save_proxies(proxies)
