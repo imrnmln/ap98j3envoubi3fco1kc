@@ -804,6 +804,8 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                             remove_proxies(proxy)
                             logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}")
                             response = {}
+                        except aiohttp.ContentLengthError as e:
+                            logging.error(f"ContentLengthError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
                         except aiohttp.ClientError as e:
                             remove_proxies(proxy)
                             logging.error(f"ClientError {e} on attempt for URL {url_to_fetch} with proxy {proxy}")
@@ -939,6 +941,8 @@ async def fetch_with_proxy(session, url_to_fetch):
         except aiohttp.ServerDisconnectedError as e:
             remove_proxies(proxy)
             logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}")
+        except aiohttp.ContentLengthError as e:
+            logging.error(f"ContentLengthError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
         except aiohttp.ClientError as e:
             remove_proxies(proxy)
             logging.error(f"ClientError {e} on attempt for URL {url_to_fetch} with proxy {proxy}")
