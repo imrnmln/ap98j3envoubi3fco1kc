@@ -754,7 +754,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                 if proxy_response.status == 200:
                                     content_type = proxy_response.headers.get('Content-Type', '')
                                     if 'application/json' in content_type:
-                                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status} {proxy}")
                                         response = await proxy_response.json()
                                     else:
                                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
@@ -885,7 +885,7 @@ async def fetch_with_proxy(session, url_to_fetch):
                 if proxy_response.status == 200:
                     content_type = proxy_response.headers.get('Content-Type', '')
                     if 'application/json' in content_type:
-                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status} {proxy}")
                         json_data = await proxy_response.json()       
                         return json_data
                     else:
