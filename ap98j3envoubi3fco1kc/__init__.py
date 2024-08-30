@@ -533,7 +533,9 @@ async def get_proxy():
     urls = [
         "https://www.sslproxies.org/",
         "https://www.us-proxy.org/",
-        "https://free-proxy-list.net/"
+        "https://free-proxy-list.net/",
+        "https://free-proxy-list.net/anonymous-proxy.html",
+        "https://free-proxy-list.net/uk-proxy.html"
     ]
     
     async with aiohttp.ClientSession() as session:
