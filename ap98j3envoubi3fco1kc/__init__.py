@@ -518,16 +518,37 @@ async def test_and_append_proxy(session, proxy, test_url, proxies):
         logging.warning(f"Found valid proxy: {proxy}")
         proxies.append(proxy)
 
+# async def get_proxy():
+#     url = "https://www.sslproxies.org/"
+#     url = "https://www.us-proxy.org/"
+#     url = "https://free-proxy-list.net/"
+#     async with aiohttp.ClientSession() as session:
+#         proxies = await fetch_proxies(session, url)
+#         if proxies:
+#             return proxies
+#         else:
+#             return None
+
 async def get_proxy():
-    url = "https://www.sslproxies.org/"
-    url = "https://www.us-proxy.org/"
-    url = "https://free-proxy-list.net/"
+    urls = [
+        "https://www.sslproxies.org/",
+        "https://www.us-proxy.org/",
+        "https://free-proxy-list.net/"
+    ]
+    
     async with aiohttp.ClientSession() as session:
-        proxies = await fetch_proxies(session, url)
-        if proxies:
-            return proxies
+        tasks = [fetch_proxies(session, url) for url in urls]
+        results = await asyncio.gather(*tasks)
+        
+        all_proxies = []
+        for proxy_list in results:
+            all_proxies.extend(proxy_list)
+        
+        if all_proxies:
+            return all_proxies
         else:
             return None
+
 
 async def test_proxy(session, proxy, test_url):
     try:
