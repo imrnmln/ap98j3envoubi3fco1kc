@@ -561,7 +561,6 @@ async def test_proxy(session, proxy, test_url):
         logging.warning(f"Proxy {proxy} failed: {e}")
     return False
 
-# Function to load proxies from JSON file
 def load_proxies():
     if os.path.exists(PROXIES_FILE):
         with open(PROXIES_FILE, "r") as file:
@@ -570,6 +569,17 @@ def load_proxies():
             proxies = data["proxies"]
             return timestamp, proxies
     return None, None
+
+def remove_proxy_from_list(proxy, proxies):
+    return [p for p in proxies if p != proxy]
+
+def remove_proxies(proxy):
+    if os.path.exists(PROXIES_FILE):
+        with open(PROXIES_FILE, "r") as file:
+            data = json.load(file)
+            proxies = data["proxies"]
+            proxies = remove_proxy_from_list(proxy, proxies)
+            save_proxies(proxies)
 
 def save_proxies(proxies):
     data = {
@@ -757,6 +767,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                         logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status} {proxy}")
                                         response = await proxy_response.json()
                                     else:
+                                        remove_proxies(proxy)
                                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                                         response = {}
                                 else:
@@ -766,12 +777,15 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                             logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
                             response = {}
                         except aiohttp.ClientOSError as e:
+                            remove_proxies(proxy)
                             logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
                             response = {}
                         except aiohttp.ServerDisconnectedError as e:
+                            remove_proxies(proxy)
                             logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}")
                             response = {}
                         except aiohttp.ClientError as e:
+                            remove_proxies(proxy)
                             logging.error(f"ClientError {e} on attempt for URL {url_to_fetch} with proxy {proxy}")
                             response = {}
                                 
@@ -889,6 +903,7 @@ async def fetch_with_proxy(session, url_to_fetch):
                         json_data = await proxy_response.json()       
                         return json_data
                     else:
+                        remove_proxies(proxy)
                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                         return {}
                 else:
@@ -898,10 +913,13 @@ async def fetch_with_proxy(session, url_to_fetch):
             logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
             return {}
         except aiohttp.ClientOSError as e:
+            remove_proxies(proxy)
             logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
         except aiohttp.ServerDisconnectedError as e:
+            remove_proxies(proxy)
             logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}")
         except aiohttp.ClientError as e:
+            remove_proxies(proxy)
             logging.error(f"ClientError {e} on attempt for URL {url_to_fetch} with proxy {proxy}")
 
                 
