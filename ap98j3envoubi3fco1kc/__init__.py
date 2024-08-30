@@ -1,5 +1,6 @@
 import random
 import aiohttp
+from aiohttp.client_exceptions import ContentLengthError, ClientError, ServerDisconnectedError
 import dotenv
 import os
 import json
@@ -800,15 +801,16 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                             remove_proxies(proxy)
                             logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
                             response = {}
-                        except aiohttp.ServerDisconnectedError as e:
+                        except ServerDisconnectedError as e:
                             remove_proxies(proxy)
-                            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}")
+                            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
                             response = {}
-                        except aiohttp.ContentLengthError as e:
+                        except ContentLengthError as e:
                             logging.error(f"ContentLengthError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-                        except aiohttp.ClientError as e:
+                            response = {}
+                        except ClientError as e:
                             remove_proxies(proxy)
-                            logging.error(f"ClientError {e} on attempt for URL {url_to_fetch} with proxy {proxy}")
+                            logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
                             response = {}
                                 
                     else:
@@ -938,15 +940,18 @@ async def fetch_with_proxy(session, url_to_fetch):
         except aiohttp.ClientOSError as e:
             remove_proxies(proxy)
             logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
-        except aiohttp.ServerDisconnectedError as e:
+            return {}
+        except ServerDisconnectedError as e:
             remove_proxies(proxy)
-            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}")
-        except aiohttp.ContentLengthError as e:
+            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return {}
+        except ContentLengthError as e:
             logging.error(f"ContentLengthError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-        except aiohttp.ClientError as e:
+            return {}
+        except ClientError as e:
             remove_proxies(proxy)
-            logging.error(f"ClientError {e} on attempt for URL {url_to_fetch} with proxy {proxy}")
-
+            logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return {}
                 
     else:
         logging.error(f"Proxies not found")
