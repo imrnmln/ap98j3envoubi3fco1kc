@@ -474,7 +474,7 @@ async def test_proxy(session, proxy, test_url):
             if response.status == 200:
                 return True
     except Exception as e:
-        print(f"Proxy {proxy} failed: {e}")
+        #print(f"Proxy {proxy} failed: {e}")
     return False
 
 async def fetch_proxies(session, url):
