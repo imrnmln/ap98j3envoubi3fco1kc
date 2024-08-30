@@ -521,6 +521,7 @@ async def test_and_append_proxy(session, proxy, test_url, proxies):
 async def get_proxy():
     url = "https://www.sslproxies.org/"
     url = "https://www.us-proxy.org/"
+    url = "https://free-proxy-list.net/"
     async with aiohttp.ClientSession() as session:
         proxies = await fetch_proxies(session, url)
         if proxies:
@@ -557,7 +558,7 @@ def save_proxies(proxies):
 
 async def manage_proxies():
     timestamp, proxies = load_proxies()
-    if not timestamp or (datett.now() - timestamp > timedelta(minutes=30)):
+    if not timestamp or (datett.now() - timestamp > timedelta(minutes=10)):
         logging.info("Fetching new proxies...")
         proxies = await get_proxy()
         save_proxies(proxies)
