@@ -819,6 +819,15 @@ def split_strings_subreddit_name(input_string):
 
 
 async def fetch_subreddit_new_layout_json(session: aiohttp.ClientSession, url: str) -> str:
+    if "https:/reddit.com" in url:
+        url = url.replace("https:/reddit.com", "https://reddit.com")
+        
+    if random.random() < 0.75:
+        url = url + "/new"
+    url = url + "/.json"
+        
+    if url.endswith("/new/new/.json"):
+        url = url.replace("/new/new/.json", "/new/.json")
     async with session.get(url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [NEW LAYOUT MODE] Rate limit encountered for %s.", url)
