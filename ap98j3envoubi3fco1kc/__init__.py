@@ -7,7 +7,7 @@ from lxml import html
 from typing import AsyncGenerator, List
 from concurrent.futures import ThreadPoolExecutor
 import time
-from datetime import time as tttime, datetime as datett
+from datetime import time as tttime, datetime as datett, timedelta
 from datetime import timezone
 import pytz
 import hashlib
@@ -512,14 +512,14 @@ def load_proxies():
     if os.path.exists(PROXIES_FILE):
         with open(PROXIES_FILE, "r") as file:
             data = json.load(file)
-            timestamp = datetime.fromisoformat(data["timestamp"])
+            timestamp = datett.fromisoformat(data["timestamp"])
             proxies = data["proxies"]
             return timestamp, proxies
     return None, None
 
 def save_proxies(proxies):
     data = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datett.now().isoformat(),
         "proxies": proxies
     }
     with open(PROXIES_FILE, "w") as file:
@@ -527,7 +527,7 @@ def save_proxies(proxies):
 
 async def manage_proxies():
     timestamp, proxies = load_proxies()
-    if not timestamp or (datetime.now() - timestamp > timedelta(minutes=30)):
+    if not timestamp or (datett.now() - timestamp > timedelta(minutes=30)):
         logging.info("Fetching new proxies...")
         proxies = await get_proxy()
         save_proxies(proxies)
