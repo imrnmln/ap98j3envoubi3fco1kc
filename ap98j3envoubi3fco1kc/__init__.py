@@ -832,7 +832,7 @@ async def fetch_with_proxy(session, url_to_fetch):
         if not "https" in proxy:
             url_to_fetch = url_to_fetch.replace("https", "http")
         logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
-        async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
+        async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=15) as proxy_response:
             if proxy_response.status == 200:
                 content_type = proxy_response.headers.get('Content-Type', '')
                 if 'application/json' in content_type:
