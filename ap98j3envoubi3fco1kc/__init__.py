@@ -872,8 +872,8 @@ async def fetch_subreddit_new_layout_json(session: aiohttp.ClientSession, url: s
     async with session.get(url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [NEW LAYOUT MODE] Rate limit encountered for %s.", url)
-            await asyncio.sleep(30)
-            return ''
+            # await asyncio.sleep(30)
+            return await fetch_new_layout_with_proxy(session, url)
         if response.status != 200:
             logging.error(f"[Reddit] [NEW LAYOUT MODE] Non-200 status code: {response.status} for {url}")
             return ''
@@ -962,6 +962,54 @@ async def fetch_with_proxy(session, url_to_fetch):
     else:
         logging.error(f"Proxies not found")
         return {}
+
+async def fetch_new_layout_with_proxy(session, url_to_fetch):
+    proxy = await manage_proxies()
+    if proxy:
+        if not "https" in proxy:
+            url_to_fetch = url_to_fetch.replace("https", "http")
+        logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
+        try:
+            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=30) as proxy_response:
+                if proxy_response.status == 200:
+                    content_type = proxy_response.headers.get('Content-Type', '')
+                    if 'application/json' in content_type:
+                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status} {proxy}")
+                        json_data = await proxy_response.text()       
+                        return json_data
+                    else:
+                        remove_proxies(proxy)
+                        logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
+                        return ''
+                else:
+                    logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                    return ''
+        except asyncio.TimeoutError:
+            remove_proxies(proxy)
+            logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
+            return ''
+        except aiohttp.ClientOSError as e:
+            remove_proxies(proxy)
+            logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
+            return ''
+        except ServerDisconnectedError as e:
+            remove_proxies(proxy)
+            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return ''
+        except ClientHttpProxyError as e:
+            remove_proxies(proxy)
+            logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return ''
+        except ClientError as e:
+            remove_proxies(proxy)
+            logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return ''
+        except Exception as e:
+            logging.error(f"Unexpected error on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                
+    else:
+        logging.error(f"Proxies not found")
+        return ''
         
 async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> dict:
     url_to_fetch = subreddit_url
