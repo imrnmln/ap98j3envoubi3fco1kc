@@ -582,12 +582,17 @@ def remove_proxies(proxy):
             save_proxies(proxies)
 
 def save_proxies(proxies):
+    unique_proxies = list(set(proxies))
+    
     data = {
         "timestamp": datett.now().isoformat(),
-        "proxies": proxies
+        "proxies": unique_proxies
     }
+    
     with open(PROXIES_FILE, "w") as file:
-        json.dump(data, file)
+        json.dump(data, file, indent=4)
+        
+    logging.info(f"Saved proxies. Total unique proxies: {len(unique_proxies)}")
 
 async def manage_proxies():
     timestamp, proxies = load_proxies()
