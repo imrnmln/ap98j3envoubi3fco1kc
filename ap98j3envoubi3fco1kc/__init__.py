@@ -836,17 +836,17 @@ async def fetch_with_proxy(session, url_to_fetch):
         logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
         try:
             async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=15) as proxy_response:
-            if proxy_response.status == 200:
-                content_type = proxy_response.headers.get('Content-Type', '')
-                if 'application/json' in content_type:
-                    logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-                    return await proxy_response.json()
+                if proxy_response.status == 200:
+                    content_type = proxy_response.headers.get('Content-Type', '')
+                    if 'application/json' in content_type:
+                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                        return await proxy_response.json()
+                    else:
+                        logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
+                        return {}
                 else:
-                    logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
+                    logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                     return {}
-            else:
-                logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-                return {}
         except asyncio.TimeoutError:
             logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
             return {}
