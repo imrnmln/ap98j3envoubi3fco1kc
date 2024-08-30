@@ -836,7 +836,7 @@ async def fetch_with_proxy(session, url_to_fetch):
             if proxy_response.status == 200:
                 content_type = proxy_response.headers.get('Content-Type', '')
                 if 'application/json' in content_type:
-                    logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                    logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                     return await proxy_response.json()
                 else:
                     logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
@@ -911,6 +911,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
         json_responses = await asyncio.gather(*tasks)
         
         for data, url in zip(json_responses, urls):
+            logging.info("[Reddit] [JSON MODE] check data before permalink .", data)
             if data:
                 permalinks = list(find_permalinks(data))
                 tasks = []
