@@ -924,7 +924,6 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
         json_responses = await asyncio.gather(*tasks)
         
         for data, url in zip(json_responses, urls):
-            logging.info("[Reddit] [JSON MODE] check data before permalink .", data)
             if data:
                 permalinks = list(find_permalinks(data))
                 tasks = []
