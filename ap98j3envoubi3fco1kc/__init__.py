@@ -740,7 +740,33 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                 timeout=BASE_TIMEOUT) as response:
                 if response.status == 429:
                     logging.warning("[Reddit] Scraping - getting Rate limit encountered for %s.", _url)
-                    response = await fetch_with_proxy(session, _url)
+                    # response = await fetch_with_proxy(session, _url)
+                    proxy = await manage_proxies()
+                    if proxy:
+                        url_to_fetch = _url
+                        if not "https" in proxy:
+                            url_to_fetch = url_to_fetch.replace("https", "http")
+                            
+                        try:
+                            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=15) as proxy_response:
+                                if proxy_response.status == 200:
+                                    content_type = proxy_response.headers.get('Content-Type', '')
+                                    if 'application/json' in content_type:
+                                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                                        response = await proxy_response.json()
+                                    else:
+                                        logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
+                                        response = {}
+                                else:
+                                    logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                                    response = {}
+                        except asyncio.TimeoutError:
+                            logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
+                            response = {}
+                                
+                    else:
+                        logging.error(f"Proxies not found")
+                        response = {}
                 else:
                     response = await response.json()
                     
