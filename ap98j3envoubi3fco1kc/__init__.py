@@ -477,7 +477,8 @@ async def fetch_proxies(session, url):
             proxies = []
             rows = tree.xpath('/html/body/section[1]/div/div[2]/div/table/tbody/tr')
             for row in rows:
-                last_checked_text = row.xpath('.//td[8]/text()')
+                last_checked_text = row.xpath('.//td[8]/text()')[0]
+                logging.info(f"Proxies last checked: {last_checked_text}")
                 if not "hour" in last_checked_text:
                     ip = row.xpath('.//td[1]/text()')[0]
                     port = row.xpath('.//td[2]/text()')[0]
