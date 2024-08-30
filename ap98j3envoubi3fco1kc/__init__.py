@@ -468,6 +468,16 @@ async def set_session_cookies(session):
     logger.info("[Reddit] Session cookies updated")
 
 
+async def test_proxy(session, proxy, test_url):
+    try:
+        async with session.get(test_url, proxy=proxy, timeout=10) as response:
+            if response.status == 200:
+                logging.info(f"Proxy {proxy} is valid")
+                return True
+    except Exception as e:
+        logging.warning(f"Proxy {proxy} failed: {e}")
+    return False
+
 async def fetch_proxies(session, url):
     async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
         logging.info(f"Response retrieve proxies: {response.status}")
@@ -476,6 +486,8 @@ async def fetch_proxies(session, url):
             tree = html.fromstring(content)
             proxies = []
             rows = tree.xpath('/html/body/section[1]/div/div[2]/div/table/tbody/tr')
+
+            tasks = []
             for row in rows:
                 last_checked_text = row.xpath('.//td[8]/text()')[0]
                 logging.info(f"Proxies last checked: {last_checked_text}")
@@ -485,26 +497,27 @@ async def fetch_proxies(session, url):
                     protocol = "https" if "yes" in row.xpath('.//td[7]/text()')[0].lower() else "http"
                     proxy = f"{protocol}://{ip}:{port}"
                     if "https" in proxy:
-                        is_proxy_valid = await test_proxy(session, proxy, "https://reddit.com")
-                        if not is_proxy_valid:
-                            logging.warning(f"HTPPS failed, try for http: {proxy}")
-                            is_proxy_valid = await test_proxy(session, proxy.replace("https","http"), "http://reddit.com")
-                            if is_proxy_valid:
-                                logging.warning(f"Found valid proxy: {proxy}")
-                                proxies.append(proxy.replace("https","http"))
-                        else:
-                            logging.warning(f"Found valid proxy: {proxy}")
-                            proxies.append(proxy)
+                        tasks.append(test_and_append_proxy(session, proxy, "https://reddit.com", proxies))
                     else:
-                        is_proxy_valid = await test_proxy(session, proxy, "http://reddit.com")
-                        if is_proxy_valid:
-                            logging.warning(f"Found valid proxy: {proxy}")
-                            proxies.append(proxy)
+                        tasks.append(test_and_append_proxy(session, proxy, "http://reddit.com", proxies))
 
+            await asyncio.gather(*tasks)
             return proxies
         else:
             logging.info(f"Failed to retrieve proxies: {response.status}")
             return []
+
+async def test_and_append_proxy(session, proxy, test_url, proxies):
+    is_proxy_valid = await test_proxy(session, proxy, test_url)
+    if not is_proxy_valid and "https" in proxy:
+        logging.warning(f"HTTPS failed, trying HTTP: {proxy}")
+        is_proxy_valid = await test_proxy(session, proxy.replace("https", "http"), "http://reddit.com")
+        if is_proxy_valid:
+            logging.warning(f"Found valid proxy (HTTP): {proxy.replace('https','http')}")
+            proxies.append(proxy.replace("https", "http"))
+    elif is_proxy_valid:
+        logging.warning(f"Found valid proxy: {proxy}")
+        proxies.append(proxy)
 
 async def get_proxy():
     url = "https://www.sslproxies.org/"
