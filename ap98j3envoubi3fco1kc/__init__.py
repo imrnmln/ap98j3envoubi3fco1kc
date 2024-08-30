@@ -813,7 +813,7 @@ async def fetch_with_proxy(session, url_to_fetch):
         logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
         async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
             if proxy_response.status == 200:
-                content_type = response.headers.get('Content-Type', '')
+                content_type = proxy_response.headers.get('Content-Type', '')
                 if 'application/json' in content_type:
                     logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                     return await proxy_response.json()
