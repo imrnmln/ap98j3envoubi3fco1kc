@@ -488,9 +488,7 @@ async def fetch_proxies(session, url):
                         if not is_proxy_valid:
                             logging.warning(f"HTPPS failed, try for http: {proxy}")
                             is_proxy_valid = await test_proxy(session, proxy.replace("https","http"), "http://reddit.com")
-                            if not is_proxy_valid:
-                                logging.warning(f"Skipping invalid proxy: {proxy}")
-                            else:
+                            if is_proxy_valid:
                                 logging.warning(f"Found valid proxy: {proxy}")
                                 proxies.append(proxy.replace("https","http"))
                         else:
@@ -498,9 +496,7 @@ async def fetch_proxies(session, url):
                             proxies.append(proxy)
                     else:
                         is_proxy_valid = await test_proxy(session, proxy, "http://reddit.com")
-                        if not is_proxy_valid:
-                            logging.warning(f"Skipping invalid proxy: {proxy}")
-                        else:
+                        if is_proxy_valid:
                             logging.warning(f"Found valid proxy: {proxy}")
                             proxies.append(proxy)
 
