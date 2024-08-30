@@ -818,7 +818,7 @@ async def fetch_with_proxy(session, url_to_fetch):
                     logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                     return await proxy_response.json()
                 else:
-                    logging.error(f"Unexpected content type: {content_type}, URL: {url}")
+                    logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                     logging.error(f"Response content: {await response.text()}")
                     return {}
             else:
