@@ -650,11 +650,11 @@ async def generate_url(autonomous_subreddit_choice=0.35, keyword: str = "BTC"):
         if random.random() < 0.5:     
             logging.info("[Reddit] Top 225 Subreddits mode!")       
             selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
+            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
         else:            
             logging.info("[Reddit] Top 1000 Subreddits mode!")
             selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
+            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
         
         return selected_subreddit_
 
@@ -784,6 +784,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                     logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                                     response = {}
                         except asyncio.TimeoutError:
+                            remove_proxies(proxy)
                             logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
                             response = {}
                         except aiohttp.ClientOSError as e:
@@ -920,6 +921,7 @@ async def fetch_with_proxy(session, url_to_fetch):
                     logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                     return {}
         except asyncio.TimeoutError:
+            remove_proxies(proxy)
             logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
             return {}
         except aiohttp.ClientOSError as e:
