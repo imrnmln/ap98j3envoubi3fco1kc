@@ -565,7 +565,7 @@ def extract_port_from_script(script_text):
 # Fetch proxies from HTML-based URLs
 async def fetch_proxies(session, url):
     async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
-        # logging.info(f"Response retrieve proxies: {response.status}")
+        logging.info(f"Response default retrieve proxies: {response.status}")
         if response.status == 200:
             content = await response.text()
             tree = html.fromstring(content)
@@ -583,6 +583,7 @@ async def fetch_proxies(session, url):
                     
                     proxies.append(proxy)
 
+            logging.info(f"Fetched {len(proxies)} proxies from {url}")
             return proxies
         else:
             logging.info(f"Failed to retrieve proxies: {response.status}")
@@ -590,7 +591,7 @@ async def fetch_proxies(session, url):
 
 async def fetch_proxies_nova(session, url):
     async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
-        # logging.info(f"Response retrieve proxies: {response.status}")
+        logging.info(f"Response retrieve nova proxies: {response.status}")
         if response.status == 200:
             content = await response.text()
             tree = html.fromstring(content)
@@ -603,6 +604,7 @@ async def fetch_proxies_nova(session, url):
                 proxy = f"http://{ip}:{port}"
                 proxies.append(proxy)
 
+            logging.info(f"Fetched {len(proxies)} proxies from {url}")
             return proxies
         else:
             logging.info(f"Failed to retrieve proxies: {response.status}")
