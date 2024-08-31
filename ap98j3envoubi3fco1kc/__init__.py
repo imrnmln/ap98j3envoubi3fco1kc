@@ -734,7 +734,6 @@ async def manage_proxies():
         proxies = await get_proxy()
         save_proxies(proxies)
 
-    logging.info(f"Saved proxies: %s ", ';'.join(proxies))
     return random.choice(proxies) if proxies else None
 
 # async def manage_proxies():
@@ -1069,7 +1068,7 @@ async def fetch_with_proxy(session, url_to_fetch):
     if proxy:
         if not "https" in proxy:
             url_to_fetch = url_to_fetch.replace("https", "http")
-        logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
+        logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy, url_to_fetch)
         try:
             async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST), "Accept-Encoding": "gzip, deflate"}, timeout=30) as proxy_response:
                 if proxy_response.status == 200:
@@ -1139,7 +1138,7 @@ async def fetch_new_layout_with_proxy(session, url_to_fetch):
     if proxy:
         if not "https" in proxy:
             url_to_fetch = url_to_fetch.replace("https", "http")
-        logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
+        logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy, url_to_fetch)
         try:
             async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=30) as proxy_response:
                 if proxy_response.status == 200:
