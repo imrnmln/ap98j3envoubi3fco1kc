@@ -588,6 +588,29 @@ async def fetch_proxies(session, url):
             logging.info(f"Failed to retrieve proxies: {response.status}")
             return []
 
+async def fetch_proxies_nova(session, url):
+    async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+        # logging.info(f"Response retrieve proxies: {response.status}")
+        if response.status == 200:
+            content = await response.text()
+            tree = html.fromstring(content)
+            proxies = []
+            rows = tree.xpath('//*[@id="tbl_proxy_list"]/tbody/tr')
+
+            for row in rows:
+                last_checked_text = row.xpath('.//td[8]/text()')[0]
+                # logging.info(f"Proxies last checked: {last_checked_text}")
+                if not "hour" in last_checked_text:
+                    ip = row.xpath('.//td[1]/text()')[0]
+                    port = row.xpath('.//td[2]/text()')[0]
+                    proxy = f"http://{ip}:{port}"
+                    proxies.append(proxy)
+
+            return proxies
+        else:
+            logging.info(f"Failed to retrieve proxies: {response.status}")
+            return []
+
 # Fetch proxies from JSON-based APIs
 async def fetch_proxies_from_api(session, url):
     try:
@@ -640,6 +663,19 @@ async def get_proxy():
         "https://api.proxyscrape.com/v3/free-proxy-list/get?request=displayproxies&proxy_format=protocolipport&format=text",
         "https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc"
     ]
+
+    nova_urls = [
+        "https://www.proxynova.com/proxy-server-list/country-gb",
+        "https://www.proxynova.com/proxy-server-list/country-us",
+        "https://www.proxynova.com/proxy-server-list/country-de",
+        "https://www.proxynova.com/proxy-server-list/country-ar",
+        "https://www.proxynova.com/proxy-server-list/country-br",
+        "https://www.proxynova.com/proxy-server-list/country-fi",
+        "https://www.proxynova.com/proxy-server-list/country-fr",
+        "https://www.proxynova.com/proxy-server-list/country-in",
+        "https://www.proxynova.com/proxy-server-list/country-kr",
+        "https://www.proxynova.com/proxy-server-list/country-ru"
+    ]
     
     async with aiohttp.ClientSession() as session:
         # Fetch proxies from HTML-based URLs
@@ -649,10 +685,14 @@ async def get_proxy():
         # Fetch proxies from JSON-based APIs
         tasks_api = [fetch_proxies_from_api(session, url) for url in api_urls]
         results_api = await asyncio.gather(*tasks_api)
+
+        # Fetch proxies from Nova
+        tasks_nova = [fetch_proxies_nova(session, url) for url in nova_urls]
+        results_nova = await asyncio.gather(*tasks_nova)
         
         # Combine all results
         all_proxies = []
-        for proxy_list in results_html + results_api:
+        for proxy_list in results_html + results_api + results_nova:
             all_proxies.extend(proxy_list)
         
         # Remove duplicates
@@ -946,6 +986,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                                         response = {}
                                 else:
+                                    remove_proxies(proxy)
                                     logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                                     response = {}
                         except asyncio.TimeoutError:
@@ -1110,6 +1151,7 @@ async def fetch_with_proxy(session, url_to_fetch):
                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                         return {}
                 else:
+                    remove_proxies(proxy)
                     logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                     return {}
         except asyncio.TimeoutError:
@@ -1163,6 +1205,7 @@ async def fetch_new_layout_with_proxy(session, url_to_fetch):
                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                         return ''
                 else:
+                    remove_proxies(proxy)
                     logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                     return ''
         except asyncio.TimeoutError:
