@@ -565,7 +565,7 @@ def extract_port_from_script(script_text):
 # Fetch proxies from HTML-based URLs
 async def fetch_proxies(session, url):
     async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
-        logging.info(f"Response retrieve proxies: {response.status}")
+        # logging.info(f"Response retrieve proxies: {response.status}")
         if response.status == 200:
             content = await response.text()
             tree = html.fromstring(content)
@@ -574,7 +574,7 @@ async def fetch_proxies(session, url):
 
             for row in rows:
                 last_checked_text = row.xpath('.//td[8]/text()')[0]
-                logging.info(f"Proxies last checked: {last_checked_text}")
+                # logging.info(f"Proxies last checked: {last_checked_text}")
                 if not "hour" in last_checked_text:
                     ip = row.xpath('.//td[1]/text()')[0]
                     port = row.xpath('.//td[2]/text()')[0]
