@@ -676,7 +676,7 @@ async def get_proxy():
 async def test_and_append_proxy(session, proxy, test_url, proxies):
     is_proxy_valid = await test_proxy(session, proxy, test_url)
     if not is_proxy_valid and "https" in proxy:
-        logging.warning(f"HTTPS failed, trying HTTP: {proxy}")
+        # logging.warning(f"HTTPS failed, trying HTTP: {proxy}")
         is_proxy_valid = await test_proxy(session, proxy.replace("https", "http"), "http://reddit.com")
         if is_proxy_valid:
             logging.warning(f"Found valid proxy (HTTP): {proxy.replace('https','http')}")
@@ -687,12 +687,12 @@ async def test_and_append_proxy(session, proxy, test_url, proxies):
 
 async def test_proxy(session, proxy, test_url):
     try:
-        async with session.get(test_url, proxy=proxy, timeout=10) as response:
+        async with session.get(test_url, proxy=proxy, timeout=15) as response:
             if response.status == 200:
                 return True
     except Exception as e:
-        logging.warning(f"Proxy {proxy} failed: {e}")
-    return False
+        #logging.warning(f"Proxy {proxy} failed: {e}")
+        return False
 
 def load_proxies():
     if os.path.exists(PROXIES_FILE):
