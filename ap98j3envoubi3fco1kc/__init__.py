@@ -633,8 +633,7 @@ async def get_proxy():
         "https://www.us-proxy.org/",
         "https://free-proxy-list.net/",
         "https://free-proxy-list.net/anonymous-proxy.html",
-        "https://free-proxy-list.net/uk-proxy.html",
-        "https://spys.one/en/http-proxy-list/"  # Added this URL
+        "https://free-proxy-list.net/uk-proxy.html"
     ]
 
     api_urls = [
