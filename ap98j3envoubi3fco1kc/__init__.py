@@ -1070,7 +1070,13 @@ async def fetch_with_proxy(session, url_to_fetch):
             url_to_fetch = url_to_fetch.replace("https", "http")
         logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy + url_to_fetch)
         try:
-            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST), "Accept-Encoding": "gzip, deflate"}, timeout=30) as proxy_response:
+            headers = {
+                "User-Agent": random.choice(USER_AGENT_LIST),
+                "Accept-Encoding": "gzip, deflate",
+                "Accept": "*/*",
+                "Connection": "keep-alive"
+            }
+            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=30, allow_redirects=True) as proxy_response:
                 if proxy_response.status == 200:
                     content_type = proxy_response.headers.get('Content-Type', '')
                     content_encoding = proxy_response.headers.get('Content-Encoding', '')
@@ -1140,7 +1146,12 @@ async def fetch_new_layout_with_proxy(session, url_to_fetch):
             url_to_fetch = url_to_fetch.replace("https", "http")
         logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy + url_to_fetch)
         try:
-            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=30) as proxy_response:
+            headers = {
+                "User-Agent": random.choice(USER_AGENT_LIST),
+                "Accept": "*/*",
+                "Connection": "keep-alive"
+            }
+            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=30, allow_redirects=True) as proxy_response:
                 if proxy_response.status == 200:
                     content_type = proxy_response.headers.get('Content-Type', '')
                     if 'application/json' in content_type:
