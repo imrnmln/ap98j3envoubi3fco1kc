@@ -598,13 +598,10 @@ async def fetch_proxies_nova(session, url):
             rows = tree.xpath('//*[@id="tbl_proxy_list"]/tbody/tr')
 
             for row in rows:
-                last_checked_text = row.xpath('.//td[8]/text()')[0]
-                # logging.info(f"Proxies last checked: {last_checked_text}")
-                if not "hour" in last_checked_text:
-                    ip = row.xpath('.//td[1]/text()')[0]
-                    port = row.xpath('.//td[2]/text()')[0]
-                    proxy = f"http://{ip}:{port}"
-                    proxies.append(proxy)
+                ip = row.xpath('.//td[1]/text()')[0]
+                port = row.xpath('.//td[2]/text()')[0]
+                proxy = f"http://{ip}:{port}"
+                proxies.append(proxy)
 
             return proxies
         else:
