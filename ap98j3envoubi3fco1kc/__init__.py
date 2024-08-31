@@ -620,8 +620,13 @@ async def fetch_proxies_from_api(session, url):
                             proxies.append(line.strip())
                         else:
                             proxies.append(f"http://{line.strip()}")
-                
-                logging.info(f"Fetched {len(proxies)} proxies from {url}")
+
+                tasks = []
+                for proxy in proxies:
+                    test_url = "https://reddit.com" if "https" in proxy else "http://reddit.com"
+                    tasks.append(test_and_append_proxy(session, proxy, test_url, proxies))
+    
+                await asyncio.gather(*tasks)
                 return proxies
             else:
                 logging.error(f"Failed to fetch proxies from {url}, status code: {response.status}")
