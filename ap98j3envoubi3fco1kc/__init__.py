@@ -913,12 +913,35 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                             url_to_fetch = url_to_fetch.replace("https", "http")
                             
                         try:
-                            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=30) as proxy_response:
+                            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST), "Accept-Encoding": "gzip, deflate"}, timeout=30) as proxy_response:
                                 if proxy_response.status == 200:
                                     content_type = proxy_response.headers.get('Content-Type', '')
+                                    content_encoding = proxy_response.headers.get('Content-Encoding', '')
+                        
                                     if 'application/json' in content_type:
                                         logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status} {proxy}")
-                                        response = await proxy_response.json()
+                                        raw_data = await proxy_response.read()
+                                        if 'gzip' in content_encoding:
+                                            try:
+                                                with gzip.GzipFile(fileobj=BytesIO(raw_data)) as gzip_file:
+                                                    content = gzip_file.read().decode('utf-8')
+                                            except Exception as e:
+                                                logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {e}")
+                                                content = None
+                                        elif 'deflate' in content_encoding:
+                                            try:
+                                                content = zlib.decompress(raw_data).decode('utf-8')
+                                            except Exception as e:
+                                                logging.error(f"Failed to decompress deflate content for {url_to_fetch}: {e}")
+                                                content = None
+                                        else:
+                                            content = raw_data.decode('utf-8')
+                        
+                                        if content:
+                                            response = json.loads(content)
+                                        else:
+                                            remove_proxies(proxy)
+                                            response = {}
                                     else:
                                         remove_proxies(proxy)
                                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
@@ -1048,13 +1071,35 @@ async def fetch_with_proxy(session, url_to_fetch):
             url_to_fetch = url_to_fetch.replace("https", "http")
         logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
         try:
-            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=30) as proxy_response:
+            async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST), "Accept-Encoding": "gzip, deflate"}, timeout=30) as proxy_response:
                 if proxy_response.status == 200:
                     content_type = proxy_response.headers.get('Content-Type', '')
+                    content_encoding = proxy_response.headers.get('Content-Encoding', '')
                     if 'application/json' in content_type:
                         logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status} {proxy}")
-                        json_data = await proxy_response.json()       
-                        return json_data
+                        raw_data = await proxy_response.read()
+                        if 'gzip' in content_encoding:
+                            try:
+                                with gzip.GzipFile(fileobj=BytesIO(raw_data)) as gzip_file:
+                                    content = gzip_file.read().decode('utf-8')
+                            except Exception as e:
+                                logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {e}")
+                                content = None
+                        elif 'deflate' in content_encoding:
+                            try:
+                                content = zlib.decompress(raw_data).decode('utf-8')
+                            except Exception as e:
+                                logging.error(f"Failed to decompress deflate content for {url_to_fetch}: {e}")
+                                content = None
+                        else:
+                            content = raw_data.decode('utf-8')
+        
+                        if content:
+                            json_data = json.loads(content)
+                            return json_data
+                        else:
+                            remove_proxies(proxy)
+                            return {}
                     else:
                         remove_proxies(proxy)
                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
