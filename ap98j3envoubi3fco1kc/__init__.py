@@ -733,7 +733,8 @@ async def manage_proxies():
         logging.info("No proxies left, fetching new proxies...")
         proxies = await get_proxy()
         save_proxies(proxies)
-    
+
+    logging.info(f"Saved proxies: %s ", ';'.join(proxies))
     return random.choice(proxies) if proxies else None
 
 # async def manage_proxies():
