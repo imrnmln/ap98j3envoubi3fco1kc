@@ -647,12 +647,12 @@ async def get_proxy():
         results_html = await asyncio.gather(*tasks_html)
         
         # Fetch proxies from JSON-based APIs
-        tasks_api = [fetch_proxies_from_api(session, url) for url in api_urls]
-        results_api = await asyncio.gather(*tasks_api)
+        # tasks_api = [fetch_proxies_from_api(session, url) for url in api_urls]
+        # results_api = await asyncio.gather(*tasks_api)
         
         # Combine all results
         all_proxies = []
-        for proxy_list in results_html + results_api:
+        for proxy_list in results_html:
             all_proxies.extend(proxy_list)
         
         # Remove duplicates
