@@ -468,16 +468,106 @@ async def set_session_cookies(session):
     #     }, response_url='https://www.reddit.com')
     logger.info("[Reddit] Session cookies updated")
 
+# async def fetch_proxies(session, url):
+#     async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+#         logging.info(f"Response retrieve proxies: {response.status}")
+#         if response.status == 200:
+#             content = await response.text()
+#             tree = html.fromstring(content)
+#             proxies = []
+#             rows = tree.xpath('/html/body/section[1]/div/div[2]/div/table/tbody/tr')
 
-async def test_proxy(session, proxy, test_url):
-    try:
-        async with session.get(test_url, proxy=proxy, timeout=10) as response:
-            if response.status == 200:
-                return True
-    except Exception as e:
-        print(f"Proxy {proxy} failed: {e}")
-    return False
+#             tasks = []
+#             for row in rows:
+#                 last_checked_text = row.xpath('.//td[8]/text()')[0]
+#                 logging.info(f"Proxies last checked: {last_checked_text}")
+#                 if not "hour" in last_checked_text:
+#                     ip = row.xpath('.//td[1]/text()')[0]
+#                     port = row.xpath('.//td[2]/text()')[0]
+#                     protocol = "https" if "yes" in row.xpath('.//td[7]/text()')[0].lower() else "http"
+#                     proxy = f"{protocol}://{ip}:{port}"
+#                     if "https" in proxy:
+#                         tasks.append(test_and_append_proxy(session, proxy, "https://reddit.com", proxies))
+#                     else:
+#                         tasks.append(test_and_append_proxy(session, proxy, "http://reddit.com", proxies))
 
+#             await asyncio.gather(*tasks)
+#             return proxies
+#         else:
+#             logging.info(f"Failed to retrieve proxies: {response.status}")
+#             return []
+
+# async def fetch_proxies_from_api(session, url):
+#     try:
+#         async with session.get(url) as response:
+#             if response.status == 200:
+#                 content_type = response.headers.get('Content-Type', '')
+#                 content = await response.text()
+#                 proxies = []
+                
+#                 if 'application/json' in content_type:
+#                     data = await response.json()
+#                     for proxy in data.get('data', []):
+#                         ip = proxy.get('ip')
+#                         port = proxy.get('port')
+#                         protocols = proxy.get('protocols', [])
+#                         if 'http' in protocols or 'https' in protocols:
+#                             protocol = 'https' if 'https' in protocols else 'http'
+#                             proxies.append(f"{protocol}://{ip}:{port}")
+#                 else:
+#                     lines = content.splitlines()
+#                     for line in lines:
+#                         if line.startswith("http://") or line.startswith("https://"):
+#                             proxies.append(line.strip())
+#                         else:
+#                             proxies.append(f"http://{line.strip()}")
+                
+#                 logging.info(f"Fetched {len(proxies)} proxies from {url}")
+#                 return proxies
+#             else:
+#                 logging.error(f"Failed to fetch proxies from {url}, status code: {response.status}")
+#                 return []
+#     except aiohttp.ClientError as e:
+#         logging.error(f"ClientError while fetching proxies from {url}: {e}")
+#         return []
+
+async def fetch_proxies_spys_one(session, url):
+    async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+        logging.info(f"Response retrieve proxies from spys.one: {response.status}")
+        if response.status == 200:
+            content = await response.text()
+            tree = html.fromstring(content)
+            proxies = []
+            
+            rows = tree.xpath("//tr[contains(@class, 'spy1xx') or contains(@class, 'spy1x')]")
+            for row in rows:
+                ip_port_script = row.xpath('.//td[1]/font[2]/text()')[0]
+                port_script = row.xpath('.//td[1]/font[2]/script/text()')[0]
+                port = extract_port_from_script(port_script)
+                ip = ip_port_script.split(":")[0]
+                protocol = "https" if 'HTTPS' in row.xpath('.//td[2]/a/text()')[0] else 'http'
+                proxy = f"{protocol}://{ip}:{port}"
+                proxies.append(proxy)
+            
+            # Test and validate proxies
+            tasks = []
+            for proxy in proxies:
+                test_url = "https://reddit.com" if "https" in proxy else "http://reddit.com"
+                tasks.append(test_and_append_proxy(session, proxy, test_url, proxies))
+
+            await asyncio.gather(*tasks)
+            return proxies
+        else:
+            logging.error(f"Failed to retrieve proxies from spys.one: {response.status}")
+            return []
+
+# Function to extract port from the script element
+def extract_port_from_script(script_text):
+    pattern = re.compile(r"(?<=\+)\d+")
+    port_parts = pattern.findall(script_text)
+    return ''.join(port_parts)
+
+# Fetch proxies from HTML-based URLs
 async def fetch_proxies(session, url):
     async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
         logging.info(f"Response retrieve proxies: {response.status}")
@@ -496,10 +586,8 @@ async def fetch_proxies(session, url):
                     port = row.xpath('.//td[2]/text()')[0]
                     protocol = "https" if "yes" in row.xpath('.//td[7]/text()')[0].lower() else "http"
                     proxy = f"{protocol}://{ip}:{port}"
-                    if "https" in proxy:
-                        tasks.append(test_and_append_proxy(session, proxy, "https://reddit.com", proxies))
-                    else:
-                        tasks.append(test_and_append_proxy(session, proxy, "http://reddit.com", proxies))
+                    test_url = "https://reddit.com" if "https" in proxy else "http://reddit.com"
+                    tasks.append(test_and_append_proxy(session, proxy, test_url, proxies))
 
             await asyncio.gather(*tasks)
             return proxies
@@ -507,6 +595,7 @@ async def fetch_proxies(session, url):
             logging.info(f"Failed to retrieve proxies: {response.status}")
             return []
 
+# Fetch proxies from JSON-based APIs
 async def fetch_proxies_from_api(session, url):
     try:
         async with session.get(url) as response:
@@ -521,7 +610,7 @@ async def fetch_proxies_from_api(session, url):
                         ip = proxy.get('ip')
                         port = proxy.get('port')
                         protocols = proxy.get('protocols', [])
-                        if 'http' in protocols or 'https' in protocols:
+                        if 'http' or 'https' in protocols:
                             protocol = 'https' if 'https' in protocols else 'http'
                             proxies.append(f"{protocol}://{ip}:{port}")
                 else:
@@ -541,36 +630,15 @@ async def fetch_proxies_from_api(session, url):
         logging.error(f"ClientError while fetching proxies from {url}: {e}")
         return []
 
-async def test_and_append_proxy(session, proxy, test_url, proxies):
-    is_proxy_valid = await test_proxy(session, proxy, test_url)
-    if not is_proxy_valid and "https" in proxy:
-        logging.warning(f"HTTPS failed, trying HTTP: {proxy}")
-        is_proxy_valid = await test_proxy(session, proxy.replace("https", "http"), "http://reddit.com")
-        if is_proxy_valid:
-            logging.warning(f"Found valid proxy (HTTP): {proxy.replace('https','http')}")
-            proxies.append(proxy.replace("https", "http"))
-    elif is_proxy_valid:
-        logging.warning(f"Found valid proxy: {proxy}")
-        proxies.append(proxy)
-
-# async def get_proxy():
-#     url = "https://www.sslproxies.org/"
-#     url = "https://www.us-proxy.org/"
-#     url = "https://free-proxy-list.net/"
-#     async with aiohttp.ClientSession() as session:
-#         proxies = await fetch_proxies(session, url)
-#         if proxies:
-#             return proxies
-#         else:
-#             return None
-
+# Main function to get all proxies
 async def get_proxy():
     html_urls = [
         "https://www.sslproxies.org/",
         "https://www.us-proxy.org/",
         "https://free-proxy-list.net/",
         "https://free-proxy-list.net/anonymous-proxy.html",
-        "https://free-proxy-list.net/uk-proxy.html"
+        "https://free-proxy-list.net/uk-proxy.html",
+        "https://spys.one/en/http-proxy-list/"  # Added this URL
     ]
 
     api_urls = [
@@ -580,7 +648,7 @@ async def get_proxy():
     
     async with aiohttp.ClientSession() as session:
         # Fetch proxies from HTML-based URLs
-        tasks_html = [fetch_proxies(session, url) for url in html_urls]
+        tasks_html = [fetch_proxies(session, url) if 'spys.one' not in url else fetch_proxies_spys_one(session, url) for url in html_urls]
         results_html = await asyncio.gather(*tasks_html)
         
         # Fetch proxies from JSON-based APIs
@@ -599,6 +667,18 @@ async def get_proxy():
             return unique_proxies
         else:
             return None
+
+async def test_and_append_proxy(session, proxy, test_url, proxies):
+    is_proxy_valid = await test_proxy(session, proxy, test_url)
+    if not is_proxy_valid and "https" in proxy:
+        logging.warning(f"HTTPS failed, trying HTTP: {proxy}")
+        is_proxy_valid = await test_proxy(session, proxy.replace("https", "http"), "http://reddit.com")
+        if is_proxy_valid:
+            logging.warning(f"Found valid proxy (HTTP): {proxy.replace('https','http')}")
+            proxies.append(proxy.replace("https", "http"))
+    elif is_proxy_valid:
+        logging.warning(f"Found valid proxy: {proxy}")
+        proxies.append(proxy)
 
 async def test_proxy(session, proxy, test_url):
     try:
