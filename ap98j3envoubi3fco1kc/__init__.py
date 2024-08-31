@@ -507,6 +507,40 @@ async def fetch_proxies(session, url):
             logging.info(f"Failed to retrieve proxies: {response.status}")
             return []
 
+async def fetch_proxies_from_api(session, url):
+    try:
+        async with session.get(url) as response:
+            if response.status == 200:
+                content_type = response.headers.get('Content-Type', '')
+                content = await response.text()
+                proxies = []
+                
+                if 'application/json' in content_type:
+                    data = await response.json()
+                    for proxy in data.get('data', []):
+                        ip = proxy.get('ip')
+                        port = proxy.get('port')
+                        protocols = proxy.get('protocols', [])
+                        if 'http' in protocols or 'https' in protocols:
+                            protocol = 'https' if 'https' in protocols else 'http'
+                            proxies.append(f"{protocol}://{ip}:{port}")
+                else:
+                    lines = content.splitlines()
+                    for line in lines:
+                        if line.startswith("http://") or line.startswith("https://"):
+                            proxies.append(line.strip())
+                        else:
+                            proxies.append(f"http://{line.strip()}")
+                
+                logging.info(f"Fetched {len(proxies)} proxies from {url}")
+                return proxies
+            else:
+                logging.error(f"Failed to fetch proxies from {url}, status code: {response.status}")
+                return []
+    except aiohttp.ClientError as e:
+        logging.error(f"ClientError while fetching proxies from {url}: {e}")
+        return []
+
 async def test_and_append_proxy(session, proxy, test_url, proxies):
     is_proxy_valid = await test_proxy(session, proxy, test_url)
     if not is_proxy_valid and "https" in proxy:
@@ -531,27 +565,40 @@ async def test_and_append_proxy(session, proxy, test_url, proxies):
 #             return None
 
 async def get_proxy():
-    urls = [
+    html_urls = [
         "https://www.sslproxies.org/",
         "https://www.us-proxy.org/",
         "https://free-proxy-list.net/",
         "https://free-proxy-list.net/anonymous-proxy.html",
         "https://free-proxy-list.net/uk-proxy.html"
     ]
+
+    api_urls = [
+        "https://api.proxyscrape.com/v3/free-proxy-list/get?request=displayproxies&proxy_format=protocolipport&format=text",
+        "https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc"
+    ]
     
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch_proxies(session, url) for url in urls]
-        results = await asyncio.gather(*tasks)
+        # Fetch proxies from HTML-based URLs
+        tasks_html = [fetch_proxies(session, url) for url in html_urls]
+        results_html = await asyncio.gather(*tasks_html)
         
+        # Fetch proxies from JSON-based APIs
+        tasks_api = [fetch_proxies_from_api(session, url) for url in api_urls]
+        results_api = await asyncio.gather(*tasks_api)
+        
+        # Combine all results
         all_proxies = []
-        for proxy_list in results:
+        for proxy_list in results_html + results_api:
             all_proxies.extend(proxy_list)
         
-        if all_proxies:
-            return all_proxies
+        # Remove duplicates
+        unique_proxies = list(set(all_proxies))
+        if unique_proxies:
+            logging.info(f"Total unique proxies: {len(unique_proxies)}")
+            return unique_proxies
         else:
             return None
-
 
 async def test_proxy(session, proxy, test_url):
     try:
