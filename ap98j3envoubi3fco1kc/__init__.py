@@ -1029,7 +1029,8 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                         response = {}
                 else:
                     response = await response.json()
-                    
+
+                logging.info(f"Response: {response}")
                 [_post, comments] = response
                 try:
                     async for item in kind(_post):
@@ -1127,7 +1128,6 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
         if result.returncode == 0:
             logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
-            logging.info(f"Response: {result.stdout}")
             content = result.stdout.decode('utf-8')
             return json.loads(content)
         else:
