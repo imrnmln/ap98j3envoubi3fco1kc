@@ -992,10 +992,15 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                                         response = {}
                                 else:
-                                    if proxy_response.status != 429:
-                                        remove_proxies(proxy)
-                                    logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-                                    response = {}
+                                    try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                                    if try_curl:
+                                        response = try_curl
+                                    else:
+                                        if proxy_response.status != 429:
+                                            remove_proxies(proxy)
+                                        logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                                        response = {}
+                                        
                         except asyncio.TimeoutError:
                             remove_proxies(proxy)
                             logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
