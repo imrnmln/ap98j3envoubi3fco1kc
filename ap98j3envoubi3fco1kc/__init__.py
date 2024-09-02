@@ -1139,8 +1139,9 @@ async def check_comments_for_permalink(session, permalink):
 async def find_permalinks(data, session):
     if isinstance(data, dict):
         if 'permalink' in data and is_within_timeframe_seconds(data['created_utc'], 86400) and data['num_comments'] > 2:
-            permalink_task = asyncio.create_task(check_comments_for_permalink(session, data['permalink']))
-            yield permalink_task
+            permalink = await check_comments_for_permalink(session, data['permalink'])
+            if permalink:
+                yield permalink
         for key, value in data.items():
             async for result in find_permalinks(value, session):
                 yield result
@@ -1236,13 +1237,9 @@ async def fetch_with_proxy(session, url_to_fetch):
                         return {}
                         
         except asyncio.TimeoutError:
-            try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
-            if try_curl:
-                return try_curl
-            else:
-                remove_proxies(proxy)
-                logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
-                return {}
+            remove_proxies(proxy)
+            logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
+            return {}
         except aiohttp.ClientOSError as e:
             try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
             if try_curl:
@@ -1401,13 +1398,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
         tasks = []
         for data, url in zip(json_responses, urls):
             if data:
-                async for permalink_task in find_permalinks(data, session):
-                    if permalink_task:
-                        tasks.append(permalink_task)
-                        
-                valid_permalinks = [permalink for permalink in await asyncio.gather(*tasks) if permalink]
-                
-                for permalink in valid_permalinks:
+                async for permalink in find_permalinks(data, session):
                     logging.warning("[Reddit] [JSON MODE] found permalink, add to tasks %s.", permalink)
                     tasks.append(fetch_and_scrap_post(permalink))
             
@@ -1415,7 +1406,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
                 for result in results:
                     if isinstance(result, Exception):
                         logging.error(f"[Reddit] [JSON MODE] Error in task: {result}")
-                    elif result is not None and isinstance(result, (list, tuple)):  # Ensure result is iterable
+                    elif result is not None:  # Ensure result is iterable
                         for item in result:
                             yield item
                     else:
