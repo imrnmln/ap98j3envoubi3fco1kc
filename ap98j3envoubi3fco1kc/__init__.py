@@ -1196,8 +1196,11 @@ async def fetch_with_proxy(session, url_to_fetch):
                                 with gzip.GzipFile(fileobj=BytesIO(raw_data)) as gzip_file:
                                     content = gzip_file.read().decode('utf-8')
                             except Exception as e:
-                                logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {raw_data}")
-                                content = None
+                                try:
+                                    content = raw_data.decode('utf-8')
+                                except Exception as e:
+                                    logging.error(f"Failed to decode content for {url_to_fetch}: {e}")
+                                    content = None
                         elif 'deflate' in content_encoding:
                             try:
                                 content = zlib.decompress(raw_data).decode('utf-8')
