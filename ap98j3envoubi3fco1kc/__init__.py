@@ -1111,13 +1111,16 @@ async def scrap_subreddit_new_layout(subreddit_urls: str) -> AsyncGenerator[str,
 async def check_comments_for_permalink(session, permalink):
     post_url = f"https://www.reddit.com{permalink}.json"
     get_comment = await fetch_with_proxy(session, post_url)
-    comments = get_comment[1]['data']['children']
-    for comment in comments:
-        comment_time = comment['data']['created_utc']
-        if is_within_timeframe_seconds(comment_time, MAX_EXPIRATION_SECONDS):
-            return permalink
-        else:
-            return None
+    
+    if get_comment and len(get_comment) > 1 and 'data' in get_comment[1] and 'children' in get_comment[1]['data']:
+        comments = get_comment[1]['data']['children']
+        for comment in comments:
+            comment_time = comment['data']['created_utc']
+            if is_within_timeframe_seconds(comment_time, MAX_EXPIRATION_SECONDS):
+                return permalink
+
+    # Return None if no comment is within the timeframe
+    return None
 
 # def find_permalinks(data):
 #     if isinstance(data, dict):
@@ -1139,10 +1142,10 @@ async def find_permalinks(data, session):
                 yield result
     elif isinstance(data, list):
         for item in data:
-            async for result in find_permalinks(item, session):
+            async for result in inks(item, session):
                 yield result
 
-async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
+async def _using_curl(url_to_fetch, proxy):
     command = [
         'curl', '-L', '-x', proxy,
         '-H', f"User-Agent: {random.choice(USER_AGENT_LIST)}",
@@ -1165,7 +1168,7 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
         return {}
 
-async def fetch_with_proxy(session, url_to_fetch):
+async def (session, url_to_fetch):
     proxy = await manage_proxies()
     if proxy:
         if not "https" in proxy:
