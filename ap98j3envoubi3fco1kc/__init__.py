@@ -991,7 +991,8 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                                         response = {}
                                 else:
-                                    # remove_proxies(proxy)
+                                    if proxy_response.status != 429:
+                                        remove_proxies(proxy)
                                     logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                                     response = {}
                         except asyncio.TimeoutError:
@@ -1156,7 +1157,8 @@ async def fetch_with_proxy(session, url_to_fetch):
                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                         return {}
                 else:
-                    # remove_proxies(proxy)
+                    if proxy_response.status != 429:
+                        remove_proxies(proxy)
                     logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                     return {}
         except asyncio.TimeoutError:
@@ -1210,7 +1212,8 @@ async def fetch_new_layout_with_proxy(session, url_to_fetch):
                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                         return ''
                 else:
-                    # remove_proxies(proxy)
+                    if proxy_response.status != 429:
+                        remove_proxies(proxy)
                     logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
                     return ''
         except asyncio.TimeoutError:
