@@ -1145,7 +1145,7 @@ async def find_permalinks(data, session):
             async for result in inks(item, session):
                 yield result
 
-async def _using_curl(url_to_fetch, proxy):
+async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
     command = [
         'curl', '-L', '-x', proxy,
         '-H', f"User-Agent: {random.choice(USER_AGENT_LIST)}",
@@ -1168,7 +1168,7 @@ async def _using_curl(url_to_fetch, proxy):
         logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
         return {}
 
-async def (session, url_to_fetch):
+async def fetch_with_proxy(session, url_to_fetch):
     proxy = await manage_proxies()
     if proxy:
         if not "https" in proxy:
