@@ -1142,7 +1142,7 @@ async def find_permalinks(data, session):
                 yield result
     elif isinstance(data, list):
         for item in data:
-            async for result in inks(item, session):
+            async for result in find_permalinks(item, session):
                 yield result
 
 async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
