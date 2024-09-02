@@ -1118,9 +1118,10 @@ async def check_comments_for_permalink(session, permalink):
     if get_comment and len(get_comment) > 1 and 'data' in get_comment[1] and 'children' in get_comment[1]['data']:
         comments = get_comment[1]['data']['children']
         for comment in comments:
-            comment_time = comment['data']['created']
-            if is_within_timeframe_seconds(comment_time, MAX_EXPIRATION_SECONDS):
-                return permalink
+            if "created" in comment_time = comment['data']:
+                comment_time = comment['data']['created']
+                if is_within_timeframe_seconds(comment_time, MAX_EXPIRATION_SECONDS):
+                    return permalink
 
     # Return None if no comment is within the timeframe
     return None
