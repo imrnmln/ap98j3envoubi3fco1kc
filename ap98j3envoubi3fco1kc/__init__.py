@@ -5,6 +5,8 @@ from aiohttp.client_exceptions import ClientError, ServerDisconnectedError, Clie
 import dotenv
 import os
 import json
+import gzip
+import zlib
 import asyncio
 from lxml import html
 from typing import AsyncGenerator, List
