@@ -1384,9 +1384,11 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
                 for result in results:
                     if isinstance(result, Exception):
                         logging.error(f"[Reddit] [JSON MODE] Error in task: {result}")
-                    else:
+                    elif result is not None and isinstance(result, (list, tuple)):  # Ensure result is iterable
                         for item in result:
                             yield item
+                    else:
+                        logging.warning(f"[Reddit] [JSON MODE] Unexpected result type or None: {result}")
                 # for permalink in permalinks:
                 #     logging.warning("[Reddit] [JSON MODE] find permalink, check post probability for %s.", permalink)
                 #     #if random.random() < SKIP_POST_PROBABILITY:
