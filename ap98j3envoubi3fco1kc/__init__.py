@@ -1118,7 +1118,7 @@ async def check_comments_for_permalink(session, permalink):
     if get_comment and len(get_comment) > 1 and 'data' in get_comment[1] and 'children' in get_comment[1]['data']:
         comments = get_comment[1]['data']['children']
         for comment in comments:
-            comment_time = comment['data']['created_utc']
+            comment_time = comment['data']['created']
             if is_within_timeframe_seconds(comment_time, MAX_EXPIRATION_SECONDS):
                 return permalink
 
@@ -1196,7 +1196,7 @@ async def fetch_with_proxy(session, url_to_fetch):
                                 with gzip.GzipFile(fileobj=BytesIO(raw_data)) as gzip_file:
                                     content = gzip_file.read().decode('utf-8')
                             except Exception as e:
-                                logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {e}")
+                                logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {raw_data}")
                                 content = None
                         elif 'deflate' in content_encoding:
                             try:
