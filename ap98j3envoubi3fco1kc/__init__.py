@@ -1188,6 +1188,7 @@ async def fetch_with_proxy(session, url_to_fetch):
                 else:
                     try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
                     if try_curl:
+                        logging.info(f"curl response for URL: {url_to_fetch}", ''.join(try_curl))
                         return try_curl
                     else:
                         if proxy_response.status != 429:
