@@ -5,9 +5,6 @@ from aiohttp.client_exceptions import ClientError, ServerDisconnectedError, Clie
 import dotenv
 import os
 import json
-import gzip
-import zlib
-from io import BytesIO
 import asyncio
 from lxml import html
 from typing import AsyncGenerator, List
@@ -835,11 +832,11 @@ async def generate_url(autonomous_subreddit_choice=0.35, keyword: str = "BTC"):
         if random.random() < 0.5:     
             logging.info("[Reddit] Top 225 Subreddits mode!")       
             selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
+            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
         else:            
             logging.info("[Reddit] Top 1000 Subreddits mode!")
             selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
+            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
         
         return selected_subreddit_
 
@@ -1033,10 +1030,10 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                 else:
                     response = await response.json()
 
-                #logging.info(f"Response: {response}")
+                logging.info(f"Response: {response}")
                 [_post, comments] = response
-                #logging.info(f"post: {_post}")
-                #logging.info(f"comments: {comments}")
+                logging.info(f"post: {_post}")
+                logging.info(f"comments: {comments}")
                 try:
                     async for item in kind(_post):
                         yield (item)
@@ -1111,45 +1108,16 @@ async def scrap_subreddit_new_layout(subreddit_urls: str) -> AsyncGenerator[str,
                     except Exception as e:
                         logging.exception(f"[Reddit] [NEW LAYOUT MODE] Error detected: {e}")
 
-async def check_comments_for_permalink(session, permalink):
-    post_url = f"https://www.reddit.com{permalink}.json"
-    get_comment = await fetch_with_proxy(session, post_url)
-    
-    if get_comment and len(get_comment) > 1 and 'data' in get_comment[1] and 'children' in get_comment[1]['data']:
-        comments = get_comment[1]['data']['children']
-        for comment in comments:
-            if "created" in comment['data']:
-                comment_time = comment['data']['created']
-                if is_within_timeframe_seconds(comment_time, MAX_EXPIRATION_SECONDS):
-                    logging.info(f"Found comment on URL: {permalink}")
-                    return permalink
 
-    # Return None if no comment is within the timeframe
-    return None
-
-# def find_permalinks(data):
-#     if isinstance(data, dict):
-#         if 'permalink' in data and is_within_timeframe_seconds(data['created_utc'], 86400) and data['num_comments'] > 2:
-#             yield data['permalink']
-#         for key, value in data.items():
-#             yield from find_permalinks(value)
-#     elif isinstance(data, list):
-#         for item in data:
-#             yield from find_permalinks(item)
-
-async def find_permalinks(data, session):
+def find_permalinks(data):
     if isinstance(data, dict):
         if 'permalink' in data and is_within_timeframe_seconds(data['created_utc'], 86400) and data['num_comments'] > 2:
-            permalink = await check_comments_for_permalink(session, data['permalink'])
-            if permalink:
-                yield permalink
+            yield data['permalink']
         for key, value in data.items():
-            async for result in find_permalinks(value, session):
-                yield result
+            yield from find_permalinks(value)
     elif isinstance(data, list):
         for item in data:
-            async for result in find_permalinks(item, session):
-                yield result
+            yield from find_permalinks(item)
 
 async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
     command = [
@@ -1199,11 +1167,8 @@ async def fetch_with_proxy(session, url_to_fetch):
                                 with gzip.GzipFile(fileobj=BytesIO(raw_data)) as gzip_file:
                                     content = gzip_file.read().decode('utf-8')
                             except Exception as e:
-                                try:
-                                    content = raw_data.decode('utf-8')
-                                except Exception as e:
-                                    logging.error(f"Failed to decode content for {url_to_fetch}: {e}")
-                                    content = None
+                                logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {e}")
+                                content = None
                         elif 'deflate' in content_encoding:
                             try:
                                 content = zlib.decompress(raw_data).decode('utf-8')
@@ -1220,13 +1185,9 @@ async def fetch_with_proxy(session, url_to_fetch):
                             remove_proxies(proxy)
                             return {}
                     else:
-                        try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
-                        if try_curl:
-                            return try_curl
-                        else:
-                            remove_proxies(proxy)
-                            logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
-                            return {}
+                        remove_proxies(proxy)
+                        logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
+                        return {}
                 else:
                     try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
                     if try_curl:
@@ -1242,37 +1203,21 @@ async def fetch_with_proxy(session, url_to_fetch):
             logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
             return {}
         except aiohttp.ClientOSError as e:
-            try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
-            if try_curl:
-                return try_curl
-            else:
-                remove_proxies(proxy)
-                logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
-                return {}
+            remove_proxies(proxy)
+            logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
+            return {}
         except ServerDisconnectedError as e:
-            try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
-            if try_curl:
-                return try_curl
-            else:
-                remove_proxies(proxy)
-                logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-                return {}
+            remove_proxies(proxy)
+            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return {}
         except ClientHttpProxyError as e:
-            try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
-            if try_curl:
-                return try_curl
-            else:
-                remove_proxies(proxy)
-                logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-                return {}
+            remove_proxies(proxy)
+            logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return {}
         except ClientError as e:
-            try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
-            if try_curl:
-                return try_curl
-            else:
-                remove_proxies(proxy)
-                logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-                return {}
+            remove_proxies(proxy)
+            logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return {}
         except Exception as e:
             logging.error(f"Unexpected error on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
                 
@@ -1396,23 +1341,22 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
     async with aiohttp.ClientSession(cookies=cookies) as session:
         tasks = [fetch_subreddit_json(session, url) for url in urls]
         json_responses = await asyncio.gather(*tasks)
-        tasks = []
+        
         for data, url in zip(json_responses, urls):
             if data:
-                async for permalink in find_permalinks(data, session):
-                    if permalink:
-                        task = fetch_and_scrap_post(permalink)
-                        tasks.append(task)
+                permalinks = list(find_permalinks(data))
+                tasks = []
+                for permalink in permalinks:
+                    logging.warning("[Reddit] [JSON MODE] find permalink, add to tasks %s.", permalink)
+                    tasks.append(fetch_and_scrap_post(permalink))
             
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 for result in results:
                     if isinstance(result, Exception):
                         logging.error(f"[Reddit] [JSON MODE] Error in task: {result}")
-                    elif result is not None:  # Ensure result is iterable
+                    else:
                         for item in result:
                             yield item
-                    else:
-                        logging.warning(f"[Reddit] [JSON MODE] Unexpected result type or None: {result}")
                 # for permalink in permalinks:
                 #     logging.warning("[Reddit] [JSON MODE] find permalink, check post probability for %s.", permalink)
                 #     #if random.random() < SKIP_POST_PROBABILITY:
