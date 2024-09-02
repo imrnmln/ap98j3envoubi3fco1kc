@@ -5,6 +5,9 @@ from aiohttp.client_exceptions import ClientError, ServerDisconnectedError, Clie
 import dotenv
 import os
 import json
+import gzip
+import zlib
+from io import BytesIO
 import asyncio
 from lxml import html
 from typing import AsyncGenerator, List
@@ -972,7 +975,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                                     content = gzip_file.read().decode('utf-8')
                                             except Exception as e:
                                                 logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {e}")
-                                                content = None
+                                                content = raw_data.decode('utf-8')
                                         elif 'deflate' in content_encoding:
                                             try:
                                                 content = zlib.decompress(raw_data).decode('utf-8')
@@ -1168,7 +1171,7 @@ async def fetch_with_proxy(session, url_to_fetch):
                                     content = gzip_file.read().decode('utf-8')
                             except Exception as e:
                                 logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {e}")
-                                content = None
+                                content = raw_data.decode('utf-8')
                         elif 'deflate' in content_encoding:
                             try:
                                 content = zlib.decompress(raw_data).decode('utf-8')
