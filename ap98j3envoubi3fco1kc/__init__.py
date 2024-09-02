@@ -1,4 +1,5 @@
 import random
+import subprocess
 import aiohttp
 from aiohttp.client_exceptions import ClientError, ServerDisconnectedError, ClientHttpProxyError
 import dotenv
@@ -1110,6 +1111,29 @@ def find_permalinks(data):
         for item in data:
             yield from find_permalinks(item)
 
+async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
+    command = [
+        'curl', '-L', '-x', proxy,
+        '-H', f"User-Agent: {random.choice(USER_AGENT_LIST)}",
+        url_to_fetch
+    ]
+
+    try:
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        if result.returncode == 0:
+            logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
+            content = result.stdout.decode('utf-8')
+            return json.loads(content)
+        else:
+            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}: {result.stderr.decode('utf-8')}")
+            return {}
+    except subprocess.TimeoutExpired:
+        logging.error(f"cURL timeout expired for {url_to_fetch} with proxy {proxy}")
+        return {}
+    except json.JSONDecodeError:
+        logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
+        return {}
+
 async def fetch_with_proxy(session, url_to_fetch):
     proxy = await manage_proxies()
     if proxy:
@@ -1157,10 +1181,15 @@ async def fetch_with_proxy(session, url_to_fetch):
                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                         return {}
                 else:
-                    if proxy_response.status != 429:
-                        remove_proxies(proxy)
-                    logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-                    return {}
+                    try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                    if try_curl:
+                        return try_curl
+                    else:
+                        if proxy_response.status != 429:
+                            remove_proxies(proxy)
+                        logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                        return {}
+                        
         except asyncio.TimeoutError:
             remove_proxies(proxy)
             logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
