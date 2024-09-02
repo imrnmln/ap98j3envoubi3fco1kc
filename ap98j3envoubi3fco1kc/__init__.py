@@ -7,6 +7,7 @@ import os
 import json
 import gzip
 import zlib
+from io import BytesIO
 import asyncio
 from lxml import html
 from typing import AsyncGenerator, List
