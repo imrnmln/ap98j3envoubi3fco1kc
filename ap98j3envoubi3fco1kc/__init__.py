@@ -1218,9 +1218,13 @@ async def fetch_with_proxy(session, url_to_fetch):
                             remove_proxies(proxy)
                             return {}
                     else:
-                        remove_proxies(proxy)
-                        logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
-                        return {}
+                        try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                        if try_curl:
+                            return try_curl
+                        else:
+                            remove_proxies(proxy)
+                            logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
+                            return {}
                 else:
                     try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
                     if try_curl:
@@ -1232,25 +1236,45 @@ async def fetch_with_proxy(session, url_to_fetch):
                         return {}
                         
         except asyncio.TimeoutError:
-            remove_proxies(proxy)
-            logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
-            return {}
+            try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+            if try_curl:
+                return try_curl
+            else:
+                remove_proxies(proxy)
+                logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
+                return {}
         except aiohttp.ClientOSError as e:
-            remove_proxies(proxy)
-            logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
-            return {}
+            try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+            if try_curl:
+                return try_curl
+            else:
+                remove_proxies(proxy)
+                logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
+                return {}
         except ServerDisconnectedError as e:
-            remove_proxies(proxy)
-            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-            return {}
+            try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+            if try_curl:
+                return try_curl
+            else:
+                remove_proxies(proxy)
+                logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                return {}
         except ClientHttpProxyError as e:
-            remove_proxies(proxy)
-            logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-            return {}
+            try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+            if try_curl:
+                return try_curl
+            else:
+                remove_proxies(proxy)
+                logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                return {}
         except ClientError as e:
-            remove_proxies(proxy)
-            logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-            return {}
+            try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+            if try_curl:
+                return try_curl
+            else:
+                remove_proxies(proxy)
+                logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                return {}
         except Exception as e:
             logging.error(f"Unexpected error on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
                 
