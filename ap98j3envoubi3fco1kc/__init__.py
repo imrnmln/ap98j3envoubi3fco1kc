@@ -1102,10 +1102,10 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                 else:
                     response = await response.json()
 
-                logging.info(f"Response: {response}")
+                #logging.info(f"Response: {response}")
                 [_post, comments] = response
-                logging.info(f"post: {_post}")
-                logging.info(f"comments: {comments}")
+                #logging.info(f"post: {_post}")
+                #logging.info(f"comments: {comments}")
                 try:
                     async for item in kind(_post):
                         yield (item)
