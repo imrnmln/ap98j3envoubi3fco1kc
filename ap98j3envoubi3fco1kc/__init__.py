@@ -736,7 +736,8 @@ async def get_proxy():
         tasks = []
         for proxy in unique_proxies:
             test_url = "https://reddit.com" if "https" in proxy else "http://reddit.com"
-            tasks.append(test_and_append_proxy(session, proxy, test_url, valid_proxies))
+            task = asyncio.create_task(test_and_append_proxy(session, proxy, test_url, valid_proxies))
+            tasks.append(task)
         
         await asyncio.gather(*tasks)
         
