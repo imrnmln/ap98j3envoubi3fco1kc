@@ -779,7 +779,7 @@ async def test_proxy_curl(proxy, test_url):
             'curl',
             '-L',  
             '-x', proxy, 
-            '--max-time', '15',  
+            '--max-time', '5',  
             '-o', '/dev/null', 
             '-s', 
             '-w', '%{http_code}', 
