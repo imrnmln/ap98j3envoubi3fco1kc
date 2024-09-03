@@ -794,6 +794,7 @@ async def get_proxy():
         unique_proxies = list(set(all_proxies))
         
         # Test and append valid proxies
+        logging.info(f"Total proxies to test: {len(unique_proxies)}")
         valid_proxies = []
         tasks = []
         for proxy in unique_proxies:
