@@ -692,6 +692,28 @@ async def fetch_proxies_from_free_proxy_cz(session):
                     proxies.append(f"{protocol}://{ip_port}")
         return proxies
 
+async def fetch_proxies_ptools(session, url):
+    async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+        logging.info(f"Response default retrieve proxies: {response.status}")
+        if response.status == 200:
+            content = await response.text()
+            tree = html.fromstring(content)
+            proxies = []
+            rows = tree.xpath('//*[@id="ct-main"]/main/table/tbody/tr')
+            proxies = []
+            for row in rows:
+                if "http" in row.xpath('.//td[3]/text()')[0].lower():
+                    ip = row.xpath('.//td[1]/text()')[0]
+                    proxy = f"http://{ip}:80"
+                    print(proxy)
+                    proxies.append(proxy)
+
+            logging.info(f"Fetched {len(proxies)} proxies from {url}")
+            return proxies
+        else:
+            logging.info(f"Failed to retrieve proxies: {response.status}")
+            return []
+
 # Main function to get all proxies
 async def get_proxy():
     html_urls = [
@@ -726,6 +748,19 @@ async def get_proxy():
         "https://www.proxynova.com/proxy-server-list/country-kr",
         "https://www.proxynova.com/proxy-server-list/country-ru"
     ]
+
+    proxy_tools = [
+        "https://proxy-tools.com/proxy?page=1",
+        "https://proxy-tools.com/proxy?page=2",
+        "https://proxy-tools.com/proxy?page=3",
+        "https://proxy-tools.com/proxy?page=4",
+        "https://proxy-tools.com/proxy?page=5",
+        "https://proxy-tools.com/proxy?page=6",
+        "https://proxy-tools.com/proxy?page=7",
+        "https://proxy-tools.com/proxy?page=8",
+        "https://proxy-tools.com/proxy?page=9",
+        "https://proxy-tools.com/proxy?page=10"
+    ]
     
     async with aiohttp.ClientSession() as session:
         # Fetch proxies from HTML-based URLs
@@ -735,6 +770,9 @@ async def get_proxy():
         # Fetch proxies from JSON-based APIs
         tasks_api = [fetch_proxies_from_api(session, url) for url in api_urls]
         results_api = await asyncio.gather(*tasks_api)
+
+        tasks_ptools = [fetch_proxies_ptools(session, url) for url in proxy_tools]
+        results_ptools = await asyncio.gather(*tasks_ptools)
 
         # Fetch proxies from Nova
         # tasks_nova = [fetch_proxies_nova(session, url) for url in nova_urls]
@@ -749,7 +787,7 @@ async def get_proxy():
         
         # Combine all results
         all_proxies = []
-        for proxy_list in results_html + results_api:
+        for proxy_list in results_html + results_api + results_ptools:
             all_proxies.extend(proxy_list)
         
         # Remove duplicates
