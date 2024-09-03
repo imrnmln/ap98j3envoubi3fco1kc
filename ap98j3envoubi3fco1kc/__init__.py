@@ -759,7 +759,8 @@ async def test_and_append_proxy(session, proxy, test_url, proxies):
         logging.warning(f"Found valid proxy: {proxy}")
         proxies.append(proxy)
 
-async def test_proxy_curl(session, proxy, test_url):
+async def test_proxy_curl(proxy, test_url):
+    logging.warning(f"Try proxy using curl: {proxy}")
     try:
         curl_command = [
             'curl',
@@ -784,17 +785,9 @@ async def test_proxy(session, proxy, test_url):
             if response.status == 200:
                 return True
             else:
-                try_proxy_curl = await test_proxy_curl(session, proxy, test_url)
-                if try_proxy_curl:
-                    return True
-                else:
-                    return False
+                return await test_proxy_curl(proxy, test_url)
     except Exception as e:
-        try_proxy_curl = await test_proxy_curl(session, proxy, test_url)
-        if try_proxy_curl:
-            return True
-        else:
-            return False
+        return await test_proxy_curl(proxy, test_url)
 
 def load_proxies():
     if os.path.exists(PROXIES_FILE):
