@@ -1176,7 +1176,10 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                     response = await response.json()
 
                 #logging.info(f"Response: {response}")
-                [_post, comments] = response
+                try:
+                    [_post, comments] = response
+                except (ValueError, TypeError) as e:
+                    logging.error(f"Error unpacking response for permalink {url_to_fetch}: {str(e)}")
                 #logging.info(f"post: {_post}")
                 #logging.info(f"comments: {comments}")
                 try:
