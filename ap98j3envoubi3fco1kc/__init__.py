@@ -1262,38 +1262,35 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
         return {}
 
-def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
+async def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
     buffer = BytesIO()
     c = pycurl.Curl()
-    
-    c.setopt(c.URL, url_to_fetch)
-    c.setopt(c.PROXY, proxy)
-    c.setopt(c.USERAGENT, random.choice(USER_AGENT_LIST))
-    c.setopt(c.FOLLOWLOCATION, True)
-    c.setopt(c.TIMEOUT, 15)
-    c.setopt(c.WRITEDATA, buffer)
-    
     try:
+        c.setopt(c.URL, url_to_fetch)
+        c.setopt(c.PROXY, proxy)
+        c.setopt(c.WRITEDATA, buffer)
+        c.setopt(c.USERAGENT, random.choice(USER_AGENT_LIST))
+        c.setopt(c.SSL_VERIFYPEER, False)
+        c.setopt(c.SSL_VERIFYHOST, False)
+        c.setopt(c.TIMEOUT, 30)
         c.perform()
-        response_code = c.getinfo(pycurl.RESPONSE_CODE)
         
+        response_code = c.getinfo(pycurl.RESPONSE_CODE)
         if response_code == 200:
-            content = buffer.getvalue().decode('utf-8')
             logging.info(f"pycURL success for {url_to_fetch} with proxy {proxy}")
+            content = buffer.getvalue().decode('utf-8')
             return json.loads(content)
         else:
             logging.error(f"pycURL failed for {url_to_fetch} with proxy {proxy}: HTTP {response_code}")
             return {}
     except pycurl.error as e:
-        errno, errstr = e.args
-        logging.error(f"pycURL error for {url_to_fetch} with proxy {proxy}: {errstr}")
+        logging.error(f"pycURL error for {url_to_fetch} with proxy {proxy}: {str(e)}")
         return {}
     except json.JSONDecodeError:
         logging.error(f"pycURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
         return {}
     finally:
         c.close()
-        buffer.close()
 
 async def fetch_with_proxy(session, url_to_fetch):
     proxy = await manage_proxies()
