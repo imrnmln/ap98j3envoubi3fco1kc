@@ -843,13 +843,37 @@ async def test_proxy_curl(proxy, test_url):
     except Exception as e:
         return False
 
+async def test_proxy_pycurl(proxy, test_url):
+    logging.warning(f"Try proxy using pycurl: {proxy}")
+    buffer = BytesIO()
+    c = pycurl.Curl()
+    
+    try:
+        c.setopt(c.URL, test_url)
+        c.setopt(c.PROXY, proxy)
+        c.setopt(c.WRITEDATA, buffer)
+        c.setopt(c.TIMEOUT, 5)
+        c.setopt(c.NOBODY, True)
+        c.perform()
+        
+        response_code = c.getinfo(pycurl.RESPONSE_CODE)
+        if response_code == 200:
+            return True
+        else:
+            return False
+    except pycurl.error as e:
+        logging.error(f"pycURL error for {test_url} with proxy {proxy}: {str(e)}")
+        return False
+    finally:
+        c.close()
+
 async def test_proxy(session, proxy, test_url):
     try:
         async with session.get(test_url, proxy=proxy, timeout=15) as response:
             if response.status == 200:
                 return True
-            # else:
-            #     return await test_proxy_curl(proxy, test_url)
+            else:
+                return await test_proxy_pycurl(proxy, test_url)
     except Exception as e:
         return False
 
