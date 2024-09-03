@@ -9,6 +9,7 @@ import gzip
 import zlib
 from io import BytesIO
 import asyncio
+import pycurl
 from lxml import html
 from typing import AsyncGenerator, List
 from concurrent.futures import ThreadPoolExecutor
@@ -1111,7 +1112,8 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                                         response = {}
                                 else:
-                                    try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                                    # try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                                    try_curl = await fetch_with_proxy_using_pycurl(url_to_fetch, proxy)
                                     if try_curl:
                                         response = try_curl
                                     else:
@@ -1261,6 +1263,39 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
         return {}
 
+def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
+    buffer = io.BytesIO()
+    c = pycurl.Curl()
+    
+    c.setopt(c.URL, url_to_fetch)
+    c.setopt(c.PROXY, proxy)
+    c.setopt(c.USERAGENT, random.choice(USER_AGENT_LIST))
+    c.setopt(c.FOLLOWLOCATION, True)
+    c.setopt(c.TIMEOUT, 15)
+    c.setopt(c.WRITEDATA, buffer)
+    
+    try:
+        c.perform()
+        response_code = c.getinfo(pycurl.RESPONSE_CODE)
+        
+        if response_code == 200:
+            content = buffer.getvalue().decode('utf-8')
+            logging.info(f"pycURL success for {url_to_fetch} with proxy {proxy}")
+            return json.loads(content)
+        else:
+            logging.error(f"pycURL failed for {url_to_fetch} with proxy {proxy}: HTTP {response_code}")
+            return {}
+    except pycurl.error as e:
+        errno, errstr = e.args
+        logging.error(f"pycURL error for {url_to_fetch} with proxy {proxy}: {errstr}")
+        return {}
+    except json.JSONDecodeError:
+        logging.error(f"pycURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
+        return {}
+    finally:
+        c.close()
+        buffer.close()
+
 async def fetch_with_proxy(session, url_to_fetch):
     proxy = await manage_proxies()
     if proxy:
@@ -1308,7 +1343,8 @@ async def fetch_with_proxy(session, url_to_fetch):
                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                         return {}
                 else:
-                    try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                    # try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)fetch_with_proxy_using_pycurl
+                    try_curl = await fetch_with_proxy_using_pycurl(url_to_fetch, proxy)
                     if try_curl:
                         return try_curl
                     else:
