@@ -624,14 +624,22 @@ async def fetch_proxies_from_api(session, url):
                 
                 if 'application/json' in content_type:
                     data = await response.json()
-                    for proxy in data.get('data', []):
-                        ip = proxy.get('ip')
-                        port = proxy.get('port')
-                        protocols = proxy.get('protocols', [])
-                        if 'http' or 'https' in protocols:
-                            protocol = 'https' if 'https' in protocols else 'http'
-                            proxy = f"{protocol}://{ip}:{port}"
+                    if "lumiproxy" in url:
+                        data = data["data"]
+                        for proxy in data.get('list', []):
+                            ip = proxy.get('ip')
+                            port = proxy.get('port')
+                            proxy = f"http://{ip}:{port}"
                             proxies.append(proxy)
+                    else:
+                        for proxy in data.get('data', []):
+                            ip = proxy.get('ip')
+                            port = proxy.get('port')
+                            protocols = proxy.get('protocols', [])
+                            if 'http' or 'https' in protocols:
+                                protocol = 'https' if 'https' in protocols else 'http'
+                                proxy = f"{protocol}://{ip}:{port}"
+                                proxies.append(proxy)
                 else:
                     lines = content.splitlines()
                     for line in lines:
@@ -702,7 +710,8 @@ async def get_proxy():
 
     api_urls = [
         "https://api.proxyscrape.com/v3/free-proxy-list/get?request=displayproxies&proxy_format=protocolipport&format=text",
-        "https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc"
+        "https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc",
+        "https://api.lumiproxy.com/web_v1/free-proxy/list?page_size=1500&page=1&language=en-us"
     ]
 
     nova_urls = [
