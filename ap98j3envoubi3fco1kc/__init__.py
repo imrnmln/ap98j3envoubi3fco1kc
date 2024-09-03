@@ -1276,7 +1276,7 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
     ]
 
     try:
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
         if result.returncode == 0:
             logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
             content = result.stdout.decode('utf-8')
