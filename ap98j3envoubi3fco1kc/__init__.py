@@ -1263,7 +1263,7 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         return {}
 
 def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
-    buffer = io.BytesIO()
+    buffer = BytesIO()
     c = pycurl.Curl()
     
     c.setopt(c.URL, url_to_fetch)
