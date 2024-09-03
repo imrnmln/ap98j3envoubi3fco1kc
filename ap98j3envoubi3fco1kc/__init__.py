@@ -706,7 +706,6 @@ async def fetch_proxies_ptools(session, url):
                 if "http" in row.xpath('.//td[3]/text()')[0].lower():
                     ip = row.xpath('.//td[1]/text()')[0]
                     proxy = f"http://{ip}:80"
-                    print(proxy)
                     proxies.append(proxy)
 
             logging.info(f"Fetched {len(proxies)} proxies from {url}")
