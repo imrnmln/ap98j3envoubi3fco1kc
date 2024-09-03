@@ -873,8 +873,8 @@ async def test_proxy(session, proxy, test_url):
         async with session.get(test_url, proxy=proxy, timeout=15) as response:
             if response.status == 200:
                 return True
-            else:
-                return await test_proxy_pycurl(proxy, test_url)
+            # else:
+            #     return await test_proxy_curl(proxy, test_url)
     except Exception as e:
         return False
 
@@ -1137,7 +1137,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                         response = {}
                                 else:
                                     # try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
-                                    try_curl = await fetch_with_proxy_using_pycurl(url_to_fetch, proxy)
+                                    try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
                                     if try_curl:
                                         response = try_curl
                                     else:
@@ -1364,8 +1364,8 @@ async def fetch_with_proxy(session, url_to_fetch):
                         logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
                         return {}
                 else:
-                    # try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)fetch_with_proxy_using_pycurl
-                    try_curl = await fetch_with_proxy_using_pycurl(url_to_fetch, proxy)
+                    # try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                    try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
                     if try_curl:
                         return try_curl
                     else:
