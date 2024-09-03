@@ -736,7 +736,7 @@ async def get_proxy():
         
         # Combine all results
         all_proxies = []
-        for proxy_list in results_html + results_api + results_nova + results_other:
+        for proxy_list in results_html + results_api + results_nova:
             all_proxies.extend(proxy_list)
         
         # Remove duplicates
