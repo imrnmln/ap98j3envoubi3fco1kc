@@ -653,15 +653,38 @@ async def fetch_proxies_from_api(session, url):
         logging.error(f"ClientError while fetching proxies from {url}: {e}")
         return []
 
-async def fetch_proxy_list(session, url, pattern, protocol='http'):
-    try:
-        async with session.get(url, timeout=10) as response:
-            if response.status == 200:
-                html_content = await response.text()
-                proxies = re.findall(pattern, html_content)
-                return [f"{protocol}://{proxy}" for proxy in proxies if proxy.startswith(protocol)]
-    except Exception as e:
-        return []
+async def fetch_proxies_from_freeproxyworld(session):
+    url = "https://www.freeproxy.world/"
+    async with session.get(url) as response:
+        text = await response.text()
+        soup = BeautifulSoup(text, 'html.parser')
+        proxies = []
+        rows = soup.find_all('tr')
+        for row in rows:
+            columns = row.find_all('td')
+            if len(columns) > 1:
+                ip = columns[0].text.strip()
+                port = columns[1].text.strip()
+                protocol = columns[2].text.strip().lower()
+                if protocol in ['http', 'https']:
+                    proxies.append(f"{protocol}://{ip}:{port}")
+        return proxies
+
+async def fetch_proxies_from_free_proxy_cz(session):
+    url = "http://free-proxy.cz/en/"
+    async with session.get(url) as response:
+        text = await response.text()
+        soup = BeautifulSoup(text, 'html.parser')
+        proxies = []
+        rows = soup.find_all('tr')
+        for row in rows:
+            columns = row.find_all('td')
+            if len(columns) > 1:
+                ip_port = columns[0].text.strip()
+                protocol = columns[1].text.strip().lower()
+                if protocol in ['http', 'https']:
+                    proxies.append(f"{protocol}://{ip_port}")
+        return proxies
 
 # Main function to get all proxies
 async def get_proxy():
@@ -690,21 +713,6 @@ async def get_proxy():
         "https://www.proxynova.com/proxy-server-list/country-kr",
         "https://www.proxynova.com/proxy-server-list/country-ru"
     ]
-
-    other_sources = [
-            # FreeProxyWorld
-            {
-                "url": "https://www.freeproxy.world/",
-                "pattern": r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]+\b',
-                "protocol": "http"
-            },
-            # Free-Proxy.cz
-            {
-                "url": "http://free-proxy.cz/en/",
-                "pattern": r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]+\b',
-                "protocol": "http"
-            },
-        ]
     
     async with aiohttp.ClientSession() as session:
         # Fetch proxies from HTML-based URLs
@@ -720,7 +728,10 @@ async def get_proxy():
         results_nova = await asyncio.gather(*tasks_nova)
 
         # Fetch proxies from other sources
-        tasks_other = [asyncio.create_task(fetch_proxy_list(session, source["url"], source["pattern"], source["protocol"])) for source in other_sources]
+        tasks_other = [
+            fetch_proxies_from_freeproxyworld(session),
+            fetch_proxies_from_free_proxy_cz(session),
+        ]
         results_other = await asyncio.gather(*tasks_other)
         
         # Combine all results
@@ -748,6 +759,8 @@ async def get_proxy():
             return None
 
 async def test_and_append_proxy(session, proxy, test_url, proxies):
+    if "socks4://" in proxy:
+        proxy = proxy.replace("socks4://","")
     is_proxy_valid = await test_proxy(session, proxy, test_url)
     if not is_proxy_valid and "https" in proxy:
         # logging.warning(f"HTTPS failed, trying HTTP: {proxy}")
