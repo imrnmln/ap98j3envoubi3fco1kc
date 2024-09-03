@@ -1272,7 +1272,7 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
     ]
 
     try:
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
         if result.returncode == 0:
             logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
             content = result.stdout.decode('utf-8')
@@ -1506,7 +1506,7 @@ async def fetch_and_scrap_post(permalink):
         async for item in scrap_post(post_url):
             items.append(item)
     except Exception as e:
-        logging.exception(f"[Reddit] [JSON MODE] Error detected: {e}")
+        logging.exception(f"[Reddit] [JSON MODE] Error detected: {e} {post_url}")
     return items
 
 async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]:
