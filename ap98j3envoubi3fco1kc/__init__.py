@@ -1281,7 +1281,7 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
             content = result.stdout.decode('utf-8')
             return json.loads(content)
         else:
-            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}: {result.stderr.decode('utf-8')}")
+            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}")
             return {}
     except subprocess.TimeoutExpired:
         logging.error(f"cURL timeout expired for {url_to_fetch} with proxy {proxy}")
