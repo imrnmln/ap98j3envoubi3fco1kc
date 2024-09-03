@@ -797,10 +797,10 @@ async def test_proxy(session, proxy, test_url):
         async with session.get(test_url, proxy=proxy, timeout=15) as response:
             if response.status == 200:
                 return True
-            else:
-                return await test_proxy_curl(proxy, test_url)
+            # else:
+            #     return await test_proxy_curl(proxy, test_url)
     except Exception as e:
-        return await test_proxy_curl(proxy, test_url)
+        return False
 
 def load_proxies():
     if os.path.exists(PROXIES_FILE):
