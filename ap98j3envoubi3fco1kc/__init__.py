@@ -547,15 +547,13 @@ async def fetch_proxies_spys_one(session, url):
             
             rows = tree.xpath("//tr[contains(@class, 'spy1xx') or contains(@class, 'spy1x')]")
             for row in rows:
-                ip_port_script = row.xpath('.//td[1]/font[2]/text()')[0]
-                port_script = row.xpath('.//td[1]/font[2]/script/text()')[0]
-                port = extract_port_from_script(port_script)
-                ip = ip_port_script.split(":")[0]
-                protocol = "https" if 'HTTPS' in row.xpath('.//td[2]/a/text()')[0] else 'http'
-                proxy = f"{protocol}://{ip}:{port}"
-                
-                proxies.append(proxy)
-            
+                if len(row.xpath('.//td')) > 6:
+                    ip = row.xpath('.//td[1]//text()')[0]
+                    proxy = f"http://{ip}"
+                    print("proxies spys one ", proxy)
+                    proxies.append(proxy)
+
+            logging.info(f"Fetched {len(proxies)} proxies from {url}")
             return proxies
         else:
             logging.error(f"Failed to retrieve proxies from spys.one: {response.status}")
@@ -693,7 +691,13 @@ async def get_proxy():
         "https://www.us-proxy.org/",
         "https://free-proxy-list.net/",
         "https://free-proxy-list.net/anonymous-proxy.html",
-        "https://free-proxy-list.net/uk-proxy.html"
+        "https://free-proxy-list.net/uk-proxy.html",
+        "https://spys.one/proxy-port/8080/",
+        "https://spys.one/proxy-port/80/",
+        "https://spys.one/proxy-port/3128/",
+        "https://spys.one/proxy-port/8080/",
+        "https://spys.one/proxy-port/999/",
+        "https://spys.one/proxy-port/1080/"
     ]
 
     api_urls = [
@@ -724,8 +728,8 @@ async def get_proxy():
         results_api = await asyncio.gather(*tasks_api)
 
         # Fetch proxies from Nova
-        tasks_nova = [fetch_proxies_nova(session, url) for url in nova_urls]
-        results_nova = await asyncio.gather(*tasks_nova)
+        # tasks_nova = [fetch_proxies_nova(session, url) for url in nova_urls]
+        # results_nova = await asyncio.gather(*tasks_nova)
 
         # Fetch proxies from other sources
         # tasks_other = [
