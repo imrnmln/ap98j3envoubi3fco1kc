@@ -19,6 +19,7 @@ import pytz
 import hashlib
 import logging
 from lxml.html import fromstring
+from bs4 import BeautifulSoup
 import re
 from exorde_data import (
     Item,
@@ -652,6 +653,16 @@ async def fetch_proxies_from_api(session, url):
         logging.error(f"ClientError while fetching proxies from {url}: {e}")
         return []
 
+async def fetch_proxy_list(session, url, pattern, protocol='http'):
+    try:
+        async with session.get(url, timeout=10) as response:
+            if response.status == 200:
+                html_content = await response.text()
+                proxies = re.findall(pattern, html_content)
+                return [f"{protocol}://{proxy}" for proxy in proxies if proxy.startswith(protocol)]
+    except Exception as e:
+        return []
+
 # Main function to get all proxies
 async def get_proxy():
     html_urls = [
@@ -679,6 +690,21 @@ async def get_proxy():
         "https://www.proxynova.com/proxy-server-list/country-kr",
         "https://www.proxynova.com/proxy-server-list/country-ru"
     ]
+
+    other_sources = [
+            # FreeProxyWorld
+            {
+                "url": "https://www.freeproxy.world/",
+                "pattern": r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]+\b',
+                "protocol": "http"
+            },
+            # Free-Proxy.cz
+            {
+                "url": "http://free-proxy.cz/en/",
+                "pattern": r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]+\b',
+                "protocol": "http"
+            },
+        ]
     
     async with aiohttp.ClientSession() as session:
         # Fetch proxies from HTML-based URLs
@@ -692,10 +718,14 @@ async def get_proxy():
         # Fetch proxies from Nova
         tasks_nova = [fetch_proxies_nova(session, url) for url in nova_urls]
         results_nova = await asyncio.gather(*tasks_nova)
+
+        # Fetch proxies from other sources
+        tasks_other = [asyncio.create_task(fetch_proxy_list(session, source["url"], source["pattern"], source["protocol"])) for source in other_sources]
+        results_other = await asyncio.gather(*tasks_other)
         
         # Combine all results
         all_proxies = []
-        for proxy_list in results_html + results_api + results_nova:
+        for proxy_list in results_html + results_api + results_nova + results_other:
             all_proxies.extend(proxy_list)
         
         # Remove duplicates
@@ -734,8 +764,27 @@ async def test_proxy(session, proxy, test_url):
             if response.status == 200:
                 return True
     except Exception as e:
-        #logging.warning(f"Proxy {proxy} failed: {e}")
+        pass
+
+    try:
+        curl_command = [
+            'curl',
+            '-L',  
+            '-x', proxy, 
+            '--max-time', '15',  
+            '-o', '/dev/null', 
+            '-s', 
+            '-w', '%{http_code}', 
+            test_url
+        ]
+
+        result = subprocess.run(curl_command, capture_output=True, text=True)
+        if result.returncode == 0 and result.stdout.strip() == "200":
+            return True
+    except Exception as e:
         return False
+
+    return False
 
 def load_proxies():
     if os.path.exists(PROXIES_FILE):
