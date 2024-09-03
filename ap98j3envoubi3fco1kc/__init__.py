@@ -728,11 +728,11 @@ async def get_proxy():
         results_nova = await asyncio.gather(*tasks_nova)
 
         # Fetch proxies from other sources
-        tasks_other = [
-            fetch_proxies_from_freeproxyworld(session),
-            fetch_proxies_from_free_proxy_cz(session),
-        ]
-        results_other = await asyncio.gather(*tasks_other)
+        # tasks_other = [
+        #     fetch_proxies_from_freeproxyworld(session),
+        #     fetch_proxies_from_free_proxy_cz(session),
+        # ]
+        # results_other = await asyncio.gather(*tasks_other)
         
         # Combine all results
         all_proxies = []
