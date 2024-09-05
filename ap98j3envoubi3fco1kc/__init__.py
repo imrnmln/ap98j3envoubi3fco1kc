@@ -693,6 +693,9 @@ async def fetch_proxies_from_free_proxy_cz(session):
                     proxies.append(f"{protocol}://{ip_port}")
         return proxies
 
+def generate_ptools_urls(base_url, total_pages):
+    return [base_url.format(page) for page in range(1, total_pages + 1)]
+
 async def fetch_proxies_ptools(session, url):
     async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
         logging.info(f"Response default retrieve proxies: {response.status}")
@@ -749,18 +752,18 @@ async def get_proxy():
         "https://www.proxynova.com/proxy-server-list/country-ru"
     ]
 
-    proxy_tools = [
-        "https://proxy-tools.com/proxy?page=1",
-        "https://proxy-tools.com/proxy?page=2",
-        "https://proxy-tools.com/proxy?page=3",
-        "https://proxy-tools.com/proxy?page=4",
-        "https://proxy-tools.com/proxy?page=5",
-        "https://proxy-tools.com/proxy?page=6",
-        "https://proxy-tools.com/proxy?page=7",
-        "https://proxy-tools.com/proxy?page=8",
-        "https://proxy-tools.com/proxy?page=9",
-        "https://proxy-tools.com/proxy?page=10"
-    ]
+    # proxy_tools = [
+    #     "https://proxy-tools.com/proxy?page=1",
+    #     "https://proxy-tools.com/proxy?page=2",
+    #     "https://proxy-tools.com/proxy?page=3",
+    #     "https://proxy-tools.com/proxy?page=4",
+    #     "https://proxy-tools.com/proxy?page=5",
+    #     "https://proxy-tools.com/proxy?page=6",
+    #     "https://proxy-tools.com/proxy?page=7",
+    #     "https://proxy-tools.com/proxy?page=8",
+    #     "https://proxy-tools.com/proxy?page=9",
+    #     "https://proxy-tools.com/proxy?page=10"
+    # ]
     
     async with aiohttp.ClientSession() as session:
         # Fetch proxies from HTML-based URLs
@@ -771,7 +774,9 @@ async def get_proxy():
         tasks_api = [fetch_proxies_from_api(session, url) for url in api_urls]
         results_api = await asyncio.gather(*tasks_api)
 
-        tasks_ptools = [fetch_proxies_ptools(session, url) for url in proxy_tools]
+        # tasks_ptools = [fetch_proxies_ptools(session, url) for url in proxy_tools]
+        page_urls = generate_page_urls("https://proxy-tools.com/proxy/https?page={}", 15) + generate_page_urls("https://proxy-tools.com/proxy/http?page={}", 430)
+        tasks_ptools = [fetch_proxies_ptools(session, url) for url in page_urls]
         results_ptools = await asyncio.gather(*tasks_ptools)
 
         # Fetch proxies from Nova
