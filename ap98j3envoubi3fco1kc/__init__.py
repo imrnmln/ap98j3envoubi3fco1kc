@@ -775,7 +775,7 @@ async def get_proxy():
         results_api = await asyncio.gather(*tasks_api)
 
         # tasks_ptools = [fetch_proxies_ptools(session, url) for url in proxy_tools]
-        page_urls = generate_page_urls("https://proxy-tools.com/proxy/https?page={}", 15) + generate_page_urls("https://proxy-tools.com/proxy/http?page={}", 430) + generate_page_urls("https://proxy-tools.com/proxy/socks?page={}", 30) + generate_page_urls("https://proxy-tools.com/proxy/anonymous?page={}", 80)
+        page_urls = generate_ptools_urls("https://proxy-tools.com/proxy/https?page={}", 15) + generate_ptools_urls("https://proxy-tools.com/proxy/http?page={}", 430) + generate_ptools_urls("https://proxy-tools.com/proxy/socks?page={}", 30) + generate_ptools_urls("https://proxy-tools.com/proxy/anonymous?page={}", 80)
         tasks_ptools = [fetch_proxies_ptools(session, url) for url in page_urls]
         results_ptools = await asyncio.gather(*tasks_ptools)
 
