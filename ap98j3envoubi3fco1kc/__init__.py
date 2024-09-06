@@ -875,7 +875,7 @@ async def test_proxy_pycurl(proxy, test_url):
 
 async def test_proxy(session, proxy, test_url):
     try:
-        async with session.get(test_url, proxy=proxy, timeout=15) as response:
+        async with session.get(test_url, proxy=proxy, timeout=30) as response:
             if response.status == 200:
                 return True
             # else:
@@ -1126,7 +1126,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                 "Accept": "*/*",
                                 "Connection": "keep-alive"
                             }
-                            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=15, allow_redirects=True) as proxy_response:
+                            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=30, allow_redirects=True) as proxy_response:
                                 if proxy_response.status == 200:
                                     content_type = proxy_response.headers.get('Content-Type', '')
                                     content_encoding = proxy_response.headers.get('Content-Encoding', '')
@@ -1303,7 +1303,7 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
     ]
 
     try:
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
         if result.returncode == 0:
             logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
             content = result.stdout.decode('utf-8')
@@ -1364,7 +1364,7 @@ async def fetch_with_proxy(session, url_to_fetch):
             reddit_session_cookie = await get_email(".env") 
             cookies = {'reddit_session': reddit_session_cookie}
             session.cookie_jar.update_cookies(cookies)
-            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=15, allow_redirects=True) as proxy_response:
+            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=30, allow_redirects=True) as proxy_response:
                 if proxy_response.status == 200:
                     content_type = proxy_response.headers.get('Content-Type', '')
                     content_encoding = proxy_response.headers.get('Content-Encoding', '')
@@ -1447,7 +1447,7 @@ async def fetch_new_layout_with_proxy(session, url_to_fetch):
                 "Accept": "*/*",
                 "Connection": "keep-alive"
             }
-            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=15, allow_redirects=True) as proxy_response:
+            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=30, allow_redirects=True) as proxy_response:
                 if proxy_response.status == 200:
                     content_type = proxy_response.headers.get('Content-Type', '')
                     if 'application/json' in content_type:
