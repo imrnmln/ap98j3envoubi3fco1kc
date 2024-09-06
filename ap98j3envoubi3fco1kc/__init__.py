@@ -1246,6 +1246,10 @@ def split_strings_subreddit_name(input_string):
 async def fetch_subreddit_new_layout_json(session: aiohttp.ClientSession, url: str) -> str:
     if "https:/reddit.com" in url:
         url = url.replace("https:/reddit.com", "https://reddit.com")
+        
+    reddit_session_cookie = await get_email(".env") 
+    cookies = {'reddit_session': reddit_session_cookie}
+    session.cookie_jar.update_cookies(cookies)
     async with session.get(url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [NEW LAYOUT MODE] Rate limit encountered for %s.", url)
@@ -1261,7 +1265,6 @@ async def scrap_subreddit_new_layout(subreddit_urls: str) -> AsyncGenerator[str,
     logging.info("[Reddit] [NEW LAYOUT MODE] Opening: %s",subreddit_urls)
     reddit_session_cookie = await get_email(".env")
     cookies = {'reddit_session': reddit_session_cookie}
-
     async with aiohttp.ClientSession(cookies=cookies) as session:
         tasks = [fetch_subreddit_new_layout_json(session, url) for url in urls]
         html_contents = await asyncio.gather(*tasks)
