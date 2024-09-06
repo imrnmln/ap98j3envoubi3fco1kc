@@ -1358,6 +1358,9 @@ async def fetch_with_proxy(session, url_to_fetch):
                 "Accept": "*/*",
                 "Connection": "keep-alive"
             }
+            reddit_session_cookie = await get_email(".env") 
+            cookies = {'reddit_session': reddit_session_cookie}
+            session.cookie_jar.update_cookies(cookies)
             async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=15, allow_redirects=True) as proxy_response:
                 if proxy_response.status == 200:
                     content_type = proxy_response.headers.get('Content-Type', '')
@@ -1497,6 +1500,9 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
         url_to_fetch = url_to_fetch.replace("/new/new/.json", "/new/.json")
     
     logging.info("[Reddit] [JSON MODE] opening: %s", url_to_fetch)
+    reddit_session_cookie = await get_email(".env") 
+    cookies = {'reddit_session': reddit_session_cookie}
+    session.cookie_jar.update_cookies(cookies)
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
