@@ -883,16 +883,16 @@ async def test_proxy(session, proxy, test_url):
     except Exception as e:
         return False
 
-# def load_proxies():
-#     if os.path.exists(PROXIES_FILE):
-#         with open(PROXIES_FILE, "r") as file:
-#             data = json.load(file)
-#             timestamp = datett.fromisoformat(data["timestamp"])
-#             proxies = data["proxies"]
-#             return timestamp, proxies
-#     return None, None
+def load_proxies():
+    if os.path.exists(PROXIES_FILE):
+        with open(PROXIES_FILE, "r") as file:
+            data = json.load(file)
+            timestamp = datett.fromisoformat(data["timestamp"])
+            proxies = data["proxies"]
+            return proxies
+    return None
 
-async def load_proxies():
+async def load_proxies_git():
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get("https://raw.githubusercontent.com/zainantum/mantle-nft-watcher/main/proxies.json") as response:
@@ -933,11 +933,14 @@ def save_proxies(proxies):
     logging.info(f"Saved proxies. Total unique proxies: {len(unique_proxies)}")
 
 async def manage_proxies():
-    proxies = await load_proxies()
+    proxies = load_proxies()
     if not proxies:
-        logging.info("No proxies left, fetching new proxies...")
-        proxies = await get_proxy()
-        save_proxies(proxies)
+        logging.info("Fetch on github first...")
+        proxies = await load_proxies_git()
+        if not proxies:
+            logging.info("No proxies left, fetching new proxies...")
+            proxies = await get_proxy()
+            save_proxies(proxies)
 
     return random.choice(proxies) if proxies else None
 
