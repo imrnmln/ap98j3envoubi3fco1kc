@@ -883,14 +883,31 @@ async def test_proxy(session, proxy, test_url):
     except Exception as e:
         return False
 
-def load_proxies():
-    if os.path.exists(PROXIES_FILE):
-        with open(PROXIES_FILE, "r") as file:
-            data = json.load(file)
-            timestamp = datett.fromisoformat(data["timestamp"])
-            proxies = data["proxies"]
-            return timestamp, proxies
-    return None, None
+# def load_proxies():
+#     if os.path.exists(PROXIES_FILE):
+#         with open(PROXIES_FILE, "r") as file:
+#             data = json.load(file)
+#             timestamp = datett.fromisoformat(data["timestamp"])
+#             proxies = data["proxies"]
+#             return timestamp, proxies
+#     return None, None
+
+async def load_proxies():
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://raw.githubusercontent.com/zainantum/mantle-nft-watcher/main/proxies.json") as response:
+                if response.status == 200:
+                    content = await response.text()
+                    data = json.loads(content)
+                    timestamp = data.get('timestamp', None)
+                    proxies = data.get('proxies', [])
+                    return timestamp, proxies
+                else:
+                    logging.error(f"Failed to load proxies from GitHub. Status code: {response.status}")
+                    return None, []
+    except Exception as e:
+        logging.error(f"Error loading proxies: {e}")
+        return None, []
 
 def remove_proxy_from_list(proxy, proxies):
     return [p for p in proxies if p != proxy]
