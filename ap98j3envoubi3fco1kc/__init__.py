@@ -900,7 +900,6 @@ async def load_proxies():
                     content = await response.text()
                     proxies = json.loads(content)
                     save_proxies(proxies)
-                    logging.info(f"Found valid proxies on github: {len(valid_proxies)}")
                     return proxies
                 else:
                     logging.error(f"Failed to load proxies from GitHub. Status code: {response.status}")
