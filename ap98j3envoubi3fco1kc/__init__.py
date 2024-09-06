@@ -898,16 +898,16 @@ async def load_proxies():
             async with session.get("https://raw.githubusercontent.com/zainantum/mantle-nft-watcher/main/proxies.json") as response:
                 if response.status == 200:
                     content = await response.text()
-                    data = json.loads(content)
-                    timestamp = data.get('timestamp', None)
-                    proxies = data.get('proxies', [])
-                    return timestamp, proxies
+                    proxies = json.loads(content)
+                    save_proxies(proxies)
+                    logging.info(f"Found valid proxies on github: {len(valid_proxies)}")
+                    return proxies
                 else:
                     logging.error(f"Failed to load proxies from GitHub. Status code: {response.status}")
-                    return None, []
+                    return []
     except Exception as e:
         logging.error(f"Error loading proxies: {e}")
-        return None, []
+        return []
 
 def remove_proxy_from_list(proxy, proxies):
     return [p for p in proxies if p != proxy]
@@ -934,7 +934,7 @@ def save_proxies(proxies):
     logging.info(f"Saved proxies. Total unique proxies: {len(unique_proxies)}")
 
 async def manage_proxies():
-    timestamp, proxies = load_proxies()
+    proxies = load_proxies()
     if not proxies:
         logging.info("No proxies left, fetching new proxies...")
         proxies = await get_proxy()
