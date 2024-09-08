@@ -889,8 +889,9 @@ def load_proxies():
             data = json.load(file)
             timestamp = datett.fromisoformat(data["timestamp"])
             proxies = data["proxies"]
-            return proxies
-    return None
+            sources = data["sources"]
+            return sources, proxies
+    return None, None
 
 async def load_proxies_git():
     try:
@@ -899,7 +900,7 @@ async def load_proxies_git():
                 if response.status == 200:
                     content = await response.text()
                     proxies = json.loads(content)
-                    save_proxies(proxies)
+                    save_proxies(proxies, "git")
                     return proxies
                 else:
                     logging.error(f"Failed to load proxies from GitHub. Status code: {response.status}")
@@ -917,14 +918,15 @@ def remove_proxies(proxy):
             data = json.load(file)
             proxies = data["proxies"]
             proxies = remove_proxy_from_list(proxy, proxies)
-            save_proxies(proxies)
+            save_proxies(proxies, data["sources"])
 
-def save_proxies(proxies):
+def save_proxies(proxies, source):
     unique_proxies = list(set(proxies))
     
     data = {
         "timestamp": datett.now().isoformat(),
-        "proxies": unique_proxies
+        "proxies": unique_proxies,
+        "sources": source
     }
     
     with open(PROXIES_FILE, "w") as file:
@@ -933,14 +935,19 @@ def save_proxies(proxies):
     logging.info(f"Saved proxies. Total unique proxies: {len(unique_proxies)}")
 
 async def manage_proxies():
-    proxies = load_proxies()
+    sources, proxies = load_proxies()
     if not proxies:
-        logging.info("Fetch on github first...")
-        proxies = await load_proxies_git()
-        if not proxies:
+        if sources == "git":
             logging.info("No proxies left, fetching new proxies...")
             proxies = await get_proxy()
-            save_proxies(proxies)
+            save_proxies(proxies, "scrape")
+        else:
+            logging.info("Fetch on github...")
+            proxies = await load_proxies_git()
+            if not proxies:
+                logging.info("No proxies left, fetching new proxies...")
+                proxies = await get_proxy()
+                save_proxies(proxies, "scrape")
 
     return random.choice(proxies) if proxies else None
 
