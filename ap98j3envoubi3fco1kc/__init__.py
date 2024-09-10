@@ -2,6 +2,7 @@ import random
 import subprocess
 import aiohttp
 from aiohttp.client_exceptions import ClientError, ServerDisconnectedError, ClientHttpProxyError
+from aiohttp_socks import ProxyConnector
 import dotenv
 import os
 import json
@@ -48,6 +49,7 @@ MAX_EXPIRATION_SECONDS = 80000
 SKIP_POST_PROBABILITY = 0.1
 BASE_TIMEOUT = 30
 PROXIES_FILE = "proxies.json"
+TOR_PROXY = 'socks5://127.0.0.1:9050'
 
 subreddits_top_225 = [
     "r/all",
@@ -1275,7 +1277,8 @@ async def scrap_subreddit_new_layout(subreddit_urls: str) -> AsyncGenerator[str,
     logging.info("[Reddit] [NEW LAYOUT MODE] Opening: %s",subreddit_urls)
     reddit_session_cookie = await get_email(".env")
     cookies = {'reddit_session': reddit_session_cookie}
-    async with aiohttp.ClientSession(cookies=cookies) as session:
+    connector = ProxyConnector.from_url(TOR_PROXY)
+    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
         tasks = [fetch_subreddit_new_layout_json(session, url) for url in urls]
         html_contents = await asyncio.gather(*tasks)
         
@@ -1567,7 +1570,8 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
     reddit_session_cookie = await get_email(".env")
     cookies = {'reddit_session': reddit_session_cookie}
     logging.info("[Reddit] [JSON MODE] opening urls: %s", urls)
-    async with aiohttp.ClientSession(cookies=cookies) as session:
+    connector = ProxyConnector.from_url(TOR_PROXY)
+    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
         tasks = [fetch_subreddit_json(session, url) for url in urls]
         json_responses = await asyncio.gather(*tasks)
         
