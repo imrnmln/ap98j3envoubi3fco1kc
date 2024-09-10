@@ -1123,11 +1123,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                 if response.status == 429:
                     logging.warning("[Reddit] Scraping - getting Rate limit encountered for %s.", _url)
                     # response = await fetch_with_proxy(session, _url)
-                    # proxy = await manage_proxies()
-                    proxy = {
-                        'http': 'socks5h://localhost:9050',
-                        'https': 'socks5h://localhost:9050'
-                    }
+                    proxy = await manage_proxies()
                     if proxy:
                         url_to_fetch = _url
                         if not "https" in proxy:
@@ -1363,11 +1359,7 @@ async def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
         c.close()
 
 async def fetch_with_proxy(session, url_to_fetch):
-    # proxy = await manage_proxies()
-    proxy = {
-        'http': 'socks5h://localhost:9050',
-        'https': 'socks5h://localhost:9050'
-    }
+    proxy = await manage_proxies()
     if proxy:
         if not "https" in proxy:
             url_to_fetch = url_to_fetch.replace("https", "http")
