@@ -2,7 +2,6 @@ import random
 import subprocess
 import aiohttp
 from aiohttp.client_exceptions import ClientError, ServerDisconnectedError, ClientHttpProxyError
-from aiohttp_socks import ProxyConnector
 import dotenv
 import os
 import json
@@ -49,7 +48,6 @@ MAX_EXPIRATION_SECONDS = 80000
 SKIP_POST_PROBABILITY = 0.1
 BASE_TIMEOUT = 30
 PROXIES_FILE = "proxies.json"
-TOR_PROXY = 'socks5://127.0.0.1:9050'
 
 subreddits_top_225 = [
     "r/all",
@@ -1109,8 +1107,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
 
     resolvers = {"Listing": listing, "t1": comment, "t3": post, "more": more}
     try:
-        connector = ProxyConnector.from_url(TOR_PROXY)
-        async with aiohttp.ClientSession(connector=connector) as session:
+        async with aiohttp.ClientSession() as session:
             _url = url + ".json?sort=new"
             logging.info(f"[Reddit] Scraping - getting {_url}")
             reddit_session_cookie = await get_email(".env") 
@@ -1274,8 +1271,7 @@ async def scrap_subreddit_new_layout(subreddit_urls: str) -> AsyncGenerator[str,
     logging.info("[Reddit] [NEW LAYOUT MODE] Opening: %s",subreddit_urls)
     reddit_session_cookie = await get_email(".env")
     cookies = {'reddit_session': reddit_session_cookie}
-    connector = ProxyConnector.from_url(TOR_PROXY)
-    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
+    async with aiohttp.ClientSession(cookies=cookies) as session:
         tasks = [fetch_subreddit_new_layout_json(session, url) for url in urls]
         html_contents = await asyncio.gather(*tasks)
         
@@ -1445,11 +1441,7 @@ async def fetch_with_proxy(session, url_to_fetch):
         return {}
 
 async def fetch_new_layout_with_proxy(session, url_to_fetch):
-    # proxy = await manage_proxies()
-    proxy = {
-        'http': 'socks5h://localhost:9050',
-        'https': 'socks5h://localhost:9050'
-    }
+    proxy = await manage_proxies()
     if proxy:
         if not "https" in proxy:
             url_to_fetch = url_to_fetch.replace("https", "http")
@@ -1563,8 +1555,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
     reddit_session_cookie = await get_email(".env")
     cookies = {'reddit_session': reddit_session_cookie}
     logging.info("[Reddit] [JSON MODE] opening urls: %s", urls)
-    connector = ProxyConnector.from_url(TOR_PROXY)
-    async with aiohttp.ClientSession(cookies=cookies, connector=connector) as session:
+    async with aiohttp.ClientSession(cookies=cookies) as session:
         tasks = [fetch_subreddit_json(session, url) for url in urls]
         json_responses = await asyncio.gather(*tasks)
         
@@ -1711,7 +1702,7 @@ async def query(parameters: dict) -> AsyncGenerator[Item, None]:
     for i in range(nb_subreddit_attempts):
         await asyncio.sleep(random.uniform(1, i))
         url = await generate_url(**parameters["url_parameters"])
-        # await manage_proxies()
+        await manage_proxies()
         # if url ends with "/new/new/.json", replace it with "/new.json"
         if url.endswith("/new/new/.json"):
             url = url.replace("/new/new/.json", "/new.json")
