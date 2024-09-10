@@ -1120,7 +1120,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                 if response.status == 429:
                     logging.warning("[Reddit] Scraping - getting Rate limit encountered for %s.", _url)
                     # response = await fetch_with_proxy(session, _url)
-                    proxy = await manage_proxies()
+                    # proxy = await manage_proxies()
                     proxy = {
                         'http': 'socks5h://localhost:9050',
                         'https': 'socks5h://localhost:9050'
@@ -1359,7 +1359,11 @@ async def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
         c.close()
 
 async def fetch_with_proxy(session, url_to_fetch):
-    proxy = await manage_proxies()
+    # proxy = await manage_proxies()
+    proxy = {
+        'http': 'socks5h://localhost:9050',
+        'https': 'socks5h://localhost:9050'
+    }
     if proxy:
         if not "https" in proxy:
             url_to_fetch = url_to_fetch.replace("https", "http")
@@ -1445,7 +1449,11 @@ async def fetch_with_proxy(session, url_to_fetch):
         return {}
 
 async def fetch_new_layout_with_proxy(session, url_to_fetch):
-    proxy = await manage_proxies()
+    # proxy = await manage_proxies()
+    proxy = {
+        'http': 'socks5h://localhost:9050',
+        'https': 'socks5h://localhost:9050'
+    }
     if proxy:
         if not "https" in proxy:
             url_to_fetch = url_to_fetch.replace("https", "http")
@@ -1706,7 +1714,7 @@ async def query(parameters: dict) -> AsyncGenerator[Item, None]:
     for i in range(nb_subreddit_attempts):
         await asyncio.sleep(random.uniform(1, i))
         url = await generate_url(**parameters["url_parameters"])
-        await manage_proxies()
+        # await manage_proxies()
         # if url ends with "/new/new/.json", replace it with "/new.json"
         if url.endswith("/new/new/.json"):
             url = url.replace("/new/new/.json", "/new.json")
