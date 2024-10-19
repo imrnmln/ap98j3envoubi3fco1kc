@@ -37,16 +37,20 @@ from wordsegment import load, segment
 load()
 
 USER_AGENT_LIST = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36'
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Edge/129.0.2792.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36 Edg/129.0.0.0',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 OPR/114.0.0.0',
+    'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
 ]
 
 global MAX_EXPIRATION_SECONDS
 global SKIP_POST_PROBABILITY
 MAX_EXPIRATION_SECONDS = 80000
-SKIP_POST_PROBABILITY = 0.1
-BASE_TIMEOUT = 30
+SKIP_POST_PROBABILITY = 0.05
+MAX_POSTS_PER_SUBREDDIT = 25
+BASE_TIMEOUT = 3
 PROXIES_FILE = "proxies.json"
 
 subreddits_top_225 = [
@@ -998,13 +1002,13 @@ async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
         await session.close()
 
 
-async def generate_url(autonomous_subreddit_choice=0.35, keyword: str = "BTC"):
+async def generate_url(autonomous_subreddit_choice=0.35, keyword: str = "news"):
     random_value = random.random()
     if random_value < autonomous_subreddit_choice:
         logging.info("[Reddit] Exploration mode!")  
         return await find_random_subreddit_for_keyword(keyword)
     else:
-        if random.random() < 0.5:     
+        if random.random() < 0.35:     
             logging.info("[Reddit] Top 225 Subreddits mode!")       
             selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
             selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
@@ -1696,9 +1700,7 @@ async def query(parameters: dict) -> AsyncGenerator[Item, None]:
     logging.info(f"[Reddit] Input parameters: {parameters}")
     MAX_EXPIRATION_SECONDS = max_oldness_seconds
     yielded_items = 0  # Counter for the number of yielded items
-
-    
-    await asyncio.sleep(random.uniform(3, 15))
+    await asyncio.sleep(random.uniform(0, 1))
     for i in range(nb_subreddit_attempts):
         await asyncio.sleep(random.uniform(1, i))
         url = await generate_url(**parameters["url_parameters"])
