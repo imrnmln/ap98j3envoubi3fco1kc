@@ -779,9 +779,9 @@ async def get_proxy():
         results_api = await asyncio.gather(*tasks_api)
 
         # tasks_ptools = [fetch_proxies_ptools(session, url) for url in proxy_tools]
-        page_urls = generate_ptools_urls("https://proxy-tools.com/proxy/https?page={}", 15) + generate_ptools_urls("https://proxy-tools.com/proxy/http?page={}", 100) + generate_ptools_urls("https://proxy-tools.com/proxy/socks?page={}", 30) + generate_ptools_urls("https://proxy-tools.com/proxy/anonymous?page={}", 80)
-        tasks_ptools = [fetch_proxies_ptools(session, url) for url in page_urls]
-        results_ptools = await asyncio.gather(*tasks_ptools)
+        # page_urls = generate_ptools_urls("https://proxy-tools.com/proxy/https?page={}", 15) + generate_ptools_urls("https://proxy-tools.com/proxy/http?page={}", 100) + generate_ptools_urls("https://proxy-tools.com/proxy/socks?page={}", 30) + generate_ptools_urls("https://proxy-tools.com/proxy/anonymous?page={}", 80)
+        # tasks_ptools = [fetch_proxies_ptools(session, url) for url in page_urls]
+        # results_ptools = await asyncio.gather(*tasks_ptools)
 
         # Fetch proxies from Nova
         # tasks_nova = [fetch_proxies_nova(session, url) for url in nova_urls]
@@ -796,7 +796,7 @@ async def get_proxy():
         
         # Combine all results
         all_proxies = []
-        for proxy_list in results_html + results_api + results_ptools:
+        for proxy_list in results_html + results_api:
             all_proxies.extend(proxy_list)
         
         # Remove duplicates
