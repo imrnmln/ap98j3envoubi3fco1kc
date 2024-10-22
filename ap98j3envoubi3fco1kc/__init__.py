@@ -478,6 +478,498 @@ async def set_session_cookies(session):
     #     }, response_url='https://www.reddit.com')
     logger.info("[Reddit] Session cookies updated")
 
+# async def fetch_proxies(session, url):
+#     async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+#         logging.info(f"Response retrieve proxies: {response.status}")
+#         if response.status == 200:
+#             content = await response.text()
+#             tree = html.fromstring(content)
+#             proxies = []
+#             rows = tree.xpath('/html/body/section[1]/div/div[2]/div/table/tbody/tr')
+
+#             tasks = []
+#             for row in rows:
+#                 last_checked_text = row.xpath('.//td[8]/text()')[0]
+#                 logging.info(f"Proxies last checked: {last_checked_text}")
+#                 if not "hour" in last_checked_text:
+#                     ip = row.xpath('.//td[1]/text()')[0]
+#                     port = row.xpath('.//td[2]/text()')[0]
+#                     protocol = "https" if "yes" in row.xpath('.//td[7]/text()')[0].lower() else "http"
+#                     proxy = f"{protocol}://{ip}:{port}"
+#                     if "https" in proxy:
+#                         tasks.append(test_and_append_proxy(session, proxy, "https://reddit.com", proxies))
+#                     else:
+#                         tasks.append(test_and_append_proxy(session, proxy, "http://reddit.com", proxies))
+
+#             await asyncio.gather(*tasks)
+#             return proxies
+#         else:
+#             logging.info(f"Failed to retrieve proxies: {response.status}")
+#             return []
+
+# async def fetch_proxies_from_api(session, url):
+#     try:
+#         async with session.get(url) as response:
+#             if response.status == 200:
+#                 content_type = response.headers.get('Content-Type', '')
+#                 content = await response.text()
+#                 proxies = []
+                
+#                 if 'application/json' in content_type:
+#                     data = await response.json()
+#                     for proxy in data.get('data', []):
+#                         ip = proxy.get('ip')
+#                         port = proxy.get('port')
+#                         protocols = proxy.get('protocols', [])
+#                         if 'http' in protocols or 'https' in protocols:
+#                             protocol = 'https' if 'https' in protocols else 'http'
+#                             proxies.append(f"{protocol}://{ip}:{port}")
+#                 else:
+#                     lines = content.splitlines()
+#                     for line in lines:
+#                         if line.startswith("http://") or line.startswith("https://"):
+#                             proxies.append(line.strip())
+#                         else:
+#                             proxies.append(f"http://{line.strip()}")
+                
+#                 logging.info(f"Fetched {len(proxies)} proxies from {url}")
+#                 return proxies
+#             else:
+#                 logging.error(f"Failed to fetch proxies from {url}, status code: {response.status}")
+#                 return []
+#     except aiohttp.ClientError as e:
+#         logging.error(f"ClientError while fetching proxies from {url}: {e}")
+#         return []
+
+# Fetch proxies from spys.one
+async def fetch_proxies_spys_one(session, url):
+    async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+        logging.info(f"Response retrieve proxies from spys.one: {response.status}")
+        if response.status == 200:
+            content = await response.text()
+            tree = html.fromstring(content)
+            proxies = []
+            
+            rows = tree.xpath("//tr[contains(@class, 'spy1xx') or contains(@class, 'spy1x')]")
+            for row in rows:
+                if len(row.xpath('.//td')) > 6:
+                    ip = row.xpath('.//td[1]//text()')[0]
+                    proxy = f"http://{ip}"
+                    print("proxies spys one ", proxy)
+                    proxies.append(proxy)
+
+            logging.info(f"Fetched {len(proxies)} proxies from {url}")
+            return proxies
+        else:
+            logging.error(f"Failed to retrieve proxies from spys.one: {response.status}")
+            return []
+
+# Function to extract port from the script element
+def extract_port_from_script(script_text):
+    pattern = re.compile(r"(?<=\+)\d+")
+    port_parts = pattern.findall(script_text)
+    return ''.join(port_parts)
+
+# Fetch proxies from HTML-based URLs
+async def fetch_proxies(session, url):
+    async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+        logging.info(f"Response default retrieve proxies: {response.status}")
+        if response.status == 200:
+            content = await response.text()
+            tree = html.fromstring(content)
+            proxies = []
+            rows = tree.xpath('/html/body/section[1]/div/div[2]/div/table/tbody/tr')
+
+            for row in rows:
+                last_checked_text = row.xpath('.//td[8]/text()')[0]
+                # logging.info(f"Proxies last checked: {last_checked_text}")
+                if not "hour" in last_checked_text:
+                    ip = row.xpath('.//td[1]/text()')[0]
+                    port = row.xpath('.//td[2]/text()')[0]
+                    protocol = "https" if "yes" in row.xpath('.//td[7]/text()')[0].lower() else "http"
+                    proxy = f"{protocol}://{ip}:{port}"
+                    
+                    proxies.append(proxy)
+
+            logging.info(f"Fetched {len(proxies)} proxies from {url}")
+            return proxies
+        else:
+            logging.info(f"Failed to retrieve proxies: {response.status}")
+            return []
+
+async def fetch_proxies_nova(session, url):
+    async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+        logging.info(f"Response retrieve nova proxies: {response.status}")
+        if response.status == 200:
+            content = await response.text()
+            tree = html.fromstring(content)
+            proxies = []
+            rows = tree.xpath('//*[@id="tbl_proxy_list"]/tbody/tr')
+
+            for row in rows:
+                ip = row.xpath('.//td[1]/text()')[0]
+                port = row.xpath('.//td[2]/text()')[0]
+                proxy = f"http://{ip}:{port}"
+                proxies.append(proxy)
+
+            logging.info(f"Fetched {len(proxies)} proxies from {url}")
+            return proxies
+        else:
+            logging.info(f"Failed to retrieve proxies: {response.status}")
+            return []
+
+# Fetch proxies from JSON-based APIs
+async def fetch_proxies_from_api(session, url):
+    try:
+        async with session.get(url) as response:
+            if response.status == 200:
+                content_type = response.headers.get('Content-Type', '')
+                content = await response.text()
+                proxies = []
+                
+                if 'application/json' in content_type:
+                    data = await response.json()
+                    if "lumiproxy" in url:
+                        data = data["data"]
+                        for proxy in data.get('list', []):
+                            ip = proxy.get('ip')
+                            port = proxy.get('port')
+                            proxy = f"http://{ip}:{port}"
+                            proxies.append(proxy)
+                    else:
+                        for proxy in data.get('data', []):
+                            ip = proxy.get('ip')
+                            port = proxy.get('port')
+                            protocols = proxy.get('protocols', [])
+                            if 'http' or 'https' in protocols:
+                                protocol = 'https' if 'https' in protocols else 'http'
+                                proxy = f"{protocol}://{ip}:{port}"
+                                proxies.append(proxy)
+                else:
+                    lines = content.splitlines()
+                    for line in lines:
+                        if line.startswith("http://") or line.startswith("https://"):
+                            proxy = line.strip()
+                        else:
+                            proxy = f"http://{line.strip()}"
+                        
+                        proxies.append(proxy)
+                
+                logging.info(f"Fetched {len(proxies)} proxies from {url}")
+                return proxies
+            else:
+                logging.error(f"Failed to fetch proxies from {url}, status code: {response.status}")
+                return []
+    except aiohttp.ClientError as e:
+        logging.error(f"ClientError while fetching proxies from {url}: {e}")
+        return []
+
+async def fetch_proxies_from_freeproxyworld(session):
+    url = "https://www.freeproxy.world/"
+    async with session.get(url) as response:
+        text = await response.text()
+        soup = BeautifulSoup(text, 'html.parser')
+        proxies = []
+        rows = soup.find_all('tr')
+        for row in rows:
+            columns = row.find_all('td')
+            if len(columns) > 1:
+                ip = columns[0].text.strip()
+                port = columns[1].text.strip()
+                protocol = columns[2].text.strip().lower()
+                if protocol in ['http', 'https']:
+                    proxies.append(f"{protocol}://{ip}:{port}")
+        return proxies
+
+async def fetch_proxies_from_free_proxy_cz(session):
+    url = "http://free-proxy.cz/en/"
+    async with session.get(url) as response:
+        text = await response.text()
+        soup = BeautifulSoup(text, 'html.parser')
+        proxies = []
+        rows = soup.find_all('tr')
+        for row in rows:
+            columns = row.find_all('td')
+            if len(columns) > 1:
+                ip_port = columns[0].text.strip()
+                protocol = columns[1].text.strip().lower()
+                if protocol in ['http', 'https']:
+                    proxies.append(f"{protocol}://{ip_port}")
+        return proxies
+
+def generate_ptools_urls(base_url, total_pages):
+    return [base_url.format(page) for page in range(1, total_pages + 1)]
+
+async def fetch_proxies_ptools(session, url):
+    async with session.get(url, headers={"User-Agent": "Mozilla/5.0"}) as response:
+        logging.info(f"Response default retrieve proxies: {response.status}")
+        if response.status == 200:
+            content = await response.text()
+            tree = html.fromstring(content)
+            proxies = []
+            rows = tree.xpath('//*[@id="ct-main"]/main/table/tbody/tr')
+            proxies = []
+            for row in rows:
+                if "http" in row.xpath('.//td[3]/text()')[0].lower():
+                    ip = row.xpath('.//td[1]/text()')[0]
+                    proxy = f"http://{ip}:80"
+                    proxies.append(proxy)
+
+            logging.info(f"Fetched {len(proxies)} proxies from {url}")
+            return proxies
+        else:
+            logging.info(f"Failed to retrieve proxies: {response.status}")
+            return []
+
+# Main function to get all proxies
+async def get_proxy():
+    html_urls = [
+        "https://www.sslproxies.org/",
+        "https://www.us-proxy.org/",
+        "https://free-proxy-list.net/",
+        "https://free-proxy-list.net/anonymous-proxy.html",
+        "https://free-proxy-list.net/uk-proxy.html",
+        "https://spys.one/proxy-port/8080/",
+        "https://spys.one/proxy-port/80/",
+        "https://spys.one/proxy-port/3128/",
+        "https://spys.one/proxy-port/8080/",
+        "https://spys.one/proxy-port/999/",
+        "https://spys.one/proxy-port/1080/"
+    ]
+
+    api_urls = [
+        "https://api.proxyscrape.com/v3/free-proxy-list/get?request=displayproxies&proxy_format=protocolipport&format=text",
+        "https://proxylist.geonode.com/api/proxy-list?limit=500&page=1&sort_by=lastChecked&sort_type=desc",
+        "https://api.lumiproxy.com/web_v1/free-proxy/list?page_size=1500&page=1&language=en-us"
+    ]
+
+    nova_urls = [
+        "https://www.proxynova.com/proxy-server-list/country-gb",
+        "https://www.proxynova.com/proxy-server-list/country-us",
+        "https://www.proxynova.com/proxy-server-list/country-de",
+        "https://www.proxynova.com/proxy-server-list/country-ar",
+        "https://www.proxynova.com/proxy-server-list/country-br",
+        "https://www.proxynova.com/proxy-server-list/country-fi",
+        "https://www.proxynova.com/proxy-server-list/country-fr",
+        "https://www.proxynova.com/proxy-server-list/country-in",
+        "https://www.proxynova.com/proxy-server-list/country-kr",
+        "https://www.proxynova.com/proxy-server-list/country-ru"
+    ]
+
+    # proxy_tools = [
+    #     "https://proxy-tools.com/proxy?page=1",
+    #     "https://proxy-tools.com/proxy?page=2",
+    #     "https://proxy-tools.com/proxy?page=3",
+    #     "https://proxy-tools.com/proxy?page=4",
+    #     "https://proxy-tools.com/proxy?page=5",
+    #     "https://proxy-tools.com/proxy?page=6",
+    #     "https://proxy-tools.com/proxy?page=7",
+    #     "https://proxy-tools.com/proxy?page=8",
+    #     "https://proxy-tools.com/proxy?page=9",
+    #     "https://proxy-tools.com/proxy?page=10"
+    # ]
+    
+    async with aiohttp.ClientSession() as session:
+        # Fetch proxies from HTML-based URLs
+        tasks_html = [fetch_proxies(session, url) if 'spys.one' not in url else fetch_proxies_spys_one(session, url) for url in html_urls]
+        results_html = await asyncio.gather(*tasks_html)
+        
+        # Fetch proxies from JSON-based APIs
+        tasks_api = [fetch_proxies_from_api(session, url) for url in api_urls]
+        results_api = await asyncio.gather(*tasks_api)
+
+        # tasks_ptools = [fetch_proxies_ptools(session, url) for url in proxy_tools]
+        page_urls = generate_ptools_urls("https://proxy-tools.com/proxy/https?page={}", 15) + generate_ptools_urls("https://proxy-tools.com/proxy/http?page={}", 100) + generate_ptools_urls("https://proxy-tools.com/proxy/socks?page={}", 30) + generate_ptools_urls("https://proxy-tools.com/proxy/anonymous?page={}", 80)
+        tasks_ptools = [fetch_proxies_ptools(session, url) for url in page_urls]
+        results_ptools = await asyncio.gather(*tasks_ptools)
+
+        # Fetch proxies from Nova
+        # tasks_nova = [fetch_proxies_nova(session, url) for url in nova_urls]
+        # results_nova = await asyncio.gather(*tasks_nova)
+
+        # Fetch proxies from other sources
+        # tasks_other = [
+        #     fetch_proxies_from_freeproxyworld(session),
+        #     fetch_proxies_from_free_proxy_cz(session),
+        # ]
+        # results_other = await asyncio.gather(*tasks_other)
+        
+        # Combine all results
+        all_proxies = []
+        for proxy_list in results_html + results_api + results_ptools:
+            all_proxies.extend(proxy_list)
+        
+        # Remove duplicates
+        unique_proxies = list(set(all_proxies))
+        
+        # Test and append valid proxies
+        logging.info(f"Total proxies to test: {len(unique_proxies)}")
+        valid_proxies = []
+        tasks = []
+        for proxy in unique_proxies:
+            test_url = "https://reddit.com" if "https" in proxy else "http://reddit.com"
+            task = asyncio.create_task(test_and_append_proxy(session, proxy, test_url, valid_proxies))
+            tasks.append(task)
+        
+        await asyncio.gather(*tasks)
+        
+        if valid_proxies:
+            logging.info(f"Total valid proxies: {len(valid_proxies)}")
+            return valid_proxies
+        else:
+            return None
+
+async def test_and_append_proxy(session, proxy, test_url, proxies):
+    if "socks4://" in proxy:
+        proxy = proxy.replace("socks4://","")
+    is_proxy_valid = await test_proxy(session, proxy, test_url)
+    if not is_proxy_valid and "https" in proxy:
+        # logging.warning(f"HTTPS failed, trying HTTP: {proxy}")
+        is_proxy_valid = await test_proxy(session, proxy.replace("https", "http"), "http://reddit.com")
+        if is_proxy_valid:
+            logging.warning(f"Found valid proxy (HTTP): {proxy.replace('https','http')}")
+            proxies.append(proxy.replace("https", "http"))
+    elif is_proxy_valid:
+        logging.warning(f"Found valid proxy: {proxy}")
+        proxies.append(proxy)
+
+async def test_proxy_curl(proxy, test_url):
+    logging.warning(f"Try proxy using curl: {proxy}")
+    try:
+        curl_command = [
+            'curl',
+            '-L',  
+            '-x', proxy, 
+            '--max-time', '5',  
+            '-o', '/dev/null', 
+            '-s', 
+            '-w', '%{http_code}', 
+            test_url
+        ]
+
+        result = subprocess.run(curl_command, capture_output=True, text=True)
+        if result.returncode == 0 and result.stdout.strip() == "200":
+            return True
+    except Exception as e:
+        return False
+
+async def test_proxy_pycurl(proxy, test_url):
+    logging.warning(f"Try proxy using pycurl: {proxy}")
+    buffer = BytesIO()
+    c = pycurl.Curl()
+    
+    try:
+        c.setopt(c.URL, test_url)
+        c.setopt(c.PROXY, proxy)
+        c.setopt(c.WRITEDATA, buffer)
+        c.setopt(c.TIMEOUT, 5)
+        c.setopt(c.NOBODY, True)
+        c.perform()
+        
+        response_code = c.getinfo(pycurl.RESPONSE_CODE)
+        if response_code == 200:
+            return True
+        else:
+            return False
+    except pycurl.error as e:
+        logging.error(f"pycURL error for {test_url} with proxy {proxy}: {str(e)}")
+        return False
+    finally:
+        c.close()
+
+async def test_proxy(session, proxy, test_url):
+    try:
+        async with session.get(test_url, proxy=proxy, timeout=30) as response:
+            if response.status == 200:
+                return True
+            # else:
+            #     return await test_proxy_curl(proxy, test_url)
+    except Exception as e:
+        return False
+
+def load_proxies():
+    if os.path.exists(PROXIES_FILE):
+        with open(PROXIES_FILE, "r") as file:
+            data = json.load(file)
+            timestamp = datett.fromisoformat(data["timestamp"])
+            proxies = data["proxies"]
+            sources = data["sources"]
+            return sources, proxies
+    return None, None
+
+async def load_proxies_git():
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://raw.githubusercontent.com/zainantum/mantle-nft-watcher/main/proxies.json") as response:
+                if response.status == 200:
+                    content = await response.text()
+                    proxies = json.loads(content)
+                    save_proxies(proxies, "git")
+                    return proxies
+                else:
+                    logging.error(f"Failed to load proxies from GitHub. Status code: {response.status}")
+                    return []
+    except Exception as e:
+        logging.error(f"Error loading proxies: {e}")
+        return []
+
+def remove_proxy_from_list(proxy, proxies):
+    return [p for p in proxies if p != proxy]
+
+def remove_proxies(proxy):
+    if os.path.exists(PROXIES_FILE):
+        with open(PROXIES_FILE, "r") as file:
+            data = json.load(file)
+            proxies = data["proxies"]
+            proxies = remove_proxy_from_list(proxy, proxies)
+            save_proxies(proxies, data["sources"])
+
+def save_proxies(proxies, source):
+    unique_proxies = list(set(proxies))
+    
+    data = {
+        "timestamp": datett.now().isoformat(),
+        "proxies": unique_proxies,
+        "sources": source
+    }
+    
+    with open(PROXIES_FILE, "w") as file:
+        json.dump(data, file, indent=4)
+        
+    logging.info(f"Saved proxies. Total unique proxies: {len(unique_proxies)}")
+
+async def manage_proxies():
+    sources, proxies = load_proxies()
+    if not proxies:
+        if sources == "git":
+            logging.info("No proxies left, fetching new proxies...")
+            proxies = await get_proxy()
+            save_proxies(proxies, "scrape")
+        else:
+            logging.info("Fetch on github...")
+            proxies = await load_proxies_git()
+            if not proxies:
+                logging.info("No proxies left, fetching new proxies...")
+                proxies = await get_proxy()
+                save_proxies(proxies, "scrape")
+
+    return random.choice(proxies) if proxies else None
+
+# async def manage_proxies():
+#     timestamp, proxies = load_proxies()
+#     if not timestamp or (datett.now() - timestamp > timedelta(minutes=15)):
+#         logging.info("Fetching new proxies...")
+#         proxies = await get_proxy()
+#         save_proxies(proxies)
+#     else:
+#         if proxies:
+#             logging.info("Using existing proxies from JSON file.")
+#         else:
+#             logging.info("Fetching new proxies...")
+#             proxies = await get_proxy()
+#             save_proxies(proxies)
+    
+#     return random.choice(proxies)
 
 async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
     """
@@ -503,7 +995,7 @@ async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
                     for url in tree.xpath('//a[contains(@href, "/r/")]//@href')
                     if not "/r/popular" in url
                 ]
-                result = f"https://reddit.com{random.choice(urls)}/new"
+                result = f"https:/reddit.com{random.choice(urls)}/new"
                 return result
     finally:
         logging.info("Session close")
@@ -629,8 +1121,102 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
             async with session.get(_url, 
                 headers={"User-Agent": random.choice(USER_AGENT_LIST)},     
                 timeout=BASE_TIMEOUT) as response:
-                response = await response.json()
-                [_post, comments] = response
+                if response.status == 429:
+                    logging.warning("[Reddit] Scraping - getting Rate limit encountered for %s.", _url)
+                    # response = await fetch_with_proxy(session, _url)
+                    proxy = await manage_proxies()
+                    if proxy:
+                        url_to_fetch = _url
+                        if not "https" in proxy:
+                            url_to_fetch = url_to_fetch.replace("https", "http")
+                            
+                        try:
+                            headers = {
+                                "User-Agent": random.choice(USER_AGENT_LIST),
+                                "Accept-Encoding": "gzip, deflate",
+                                "Accept": "*/*",
+                                "Connection": "keep-alive"
+                            }
+                            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=30, allow_redirects=True) as proxy_response:
+                                if proxy_response.status == 200:
+                                    content_type = proxy_response.headers.get('Content-Type', '')
+                                    content_encoding = proxy_response.headers.get('Content-Encoding', '')
+                        
+                                    if 'application/json' in content_type:
+                                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status} {proxy}")
+                                        raw_data = await proxy_response.read()
+                                        if 'gzip' in content_encoding:
+                                            try:
+                                                with gzip.GzipFile(fileobj=BytesIO(raw_data)) as gzip_file:
+                                                    content = gzip_file.read().decode('utf-8')
+                                            except Exception as e:
+                                                logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {e}")
+                                                content = raw_data.decode('utf-8')
+                                        elif 'deflate' in content_encoding:
+                                            try:
+                                                content = zlib.decompress(raw_data).decode('utf-8')
+                                            except Exception as e:
+                                                logging.error(f"Failed to decompress deflate content for {url_to_fetch}: {e}")
+                                                content = None
+                                        else:
+                                            content = raw_data.decode('utf-8')
+                        
+                                        if content:
+                                            response = json.loads(content)
+                                        else:
+                                            remove_proxies(proxy)
+                                            response = {}
+                                    else:
+                                        remove_proxies(proxy)
+                                        logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
+                                        response = {}
+                                else:
+                                    # try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                                    try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                                    if try_curl:
+                                        response = try_curl
+                                    else:
+                                        remove_proxies(proxy)
+                                        logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                                        response = {}
+                                        
+                        except asyncio.TimeoutError:
+                            remove_proxies(proxy)
+                            logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
+                            response = {}
+                        except aiohttp.ClientOSError as e:
+                            remove_proxies(proxy)
+                            logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
+                            response = {}
+                        except ServerDisconnectedError as e:
+                            remove_proxies(proxy)
+                            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                            response = {}
+                        except ClientHttpProxyError as e:
+                            remove_proxies(proxy)
+                            logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                            response = {}
+                        except ClientError as e:
+                            remove_proxies(proxy)
+                            logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                            response = {}
+                        except Exception as e:
+                            logging.error(f"Unexpected error on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                                
+                    else:
+                        logging.error(f"Proxies not found")
+                        response = {}
+                else:
+                    response = await response.json()
+
+                #logging.info(f"Response: {response}")
+                try:
+                    [_post, comments] = response
+                except (ValueError, TypeError) as e:
+                    logging.error(f"Error unpacking response for permalink {url_to_fetch}: {str(e)}")
+                    return
+                #logging.info(f"post: {_post}")
+                #logging.info(f"comments: {comments}")
                 try:
                     async for item in kind(_post):
                         yield (item)
@@ -719,6 +1305,198 @@ def find_permalinks(data):
         for item in data:
             yield from find_permalinks(item)
 
+async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
+    command = [
+        'curl', '-L', '-x', proxy,
+        '-H', f"User-Agent: {random.choice(USER_AGENT_LIST)}",
+        url_to_fetch
+    ]
+
+    try:
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        if result.returncode == 0:
+            logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
+            content = result.stdout.decode('utf-8')
+            return json.loads(content)
+        else:
+            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}")
+            return {}
+    except subprocess.TimeoutExpired:
+        logging.error(f"cURL timeout expired for {url_to_fetch} with proxy {proxy}")
+        return {}
+    except json.JSONDecodeError:
+        logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
+        return {}
+
+async def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
+    buffer = BytesIO()
+    c = pycurl.Curl()
+    try:
+        c.setopt(c.URL, url_to_fetch)
+        c.setopt(c.PROXY, proxy)
+        c.setopt(c.WRITEDATA, buffer)
+        c.setopt(c.USERAGENT, random.choice(USER_AGENT_LIST))
+        c.setopt(c.SSL_VERIFYPEER, False)
+        c.setopt(c.SSL_VERIFYHOST, False)
+        c.setopt(c.TIMEOUT, 30)
+        c.perform()
+        
+        response_code = c.getinfo(pycurl.RESPONSE_CODE)
+        if response_code == 200:
+            logging.info(f"pycURL success for {url_to_fetch} with proxy {proxy}")
+            content = buffer.getvalue().decode('utf-8')
+            return json.loads(content)
+        else:
+            logging.error(f"pycURL failed for {url_to_fetch} with proxy {proxy}: HTTP {response_code}")
+            return {}
+    except pycurl.error as e:
+        logging.error(f"pycURL error for {url_to_fetch} with proxy {proxy}: {str(e)}")
+        return {}
+    except json.JSONDecodeError:
+        logging.error(f"pycURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
+        return {}
+    finally:
+        c.close()
+
+async def fetch_with_proxy(session, url_to_fetch):
+    proxy = await manage_proxies()
+    if proxy:
+        if not "https" in proxy:
+            url_to_fetch = url_to_fetch.replace("https", "http")
+        logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy + url_to_fetch)
+        try:
+            headers = {
+                "User-Agent": random.choice(USER_AGENT_LIST),
+                "Accept-Encoding": "gzip, deflate",
+                "Accept": "*/*",
+                "Connection": "keep-alive"
+            }
+            reddit_session_cookie = await get_email(".env") 
+            cookies = {'reddit_session': reddit_session_cookie}
+            session.cookie_jar.update_cookies(cookies)
+            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=30, allow_redirects=True) as proxy_response:
+                if proxy_response.status == 200:
+                    content_type = proxy_response.headers.get('Content-Type', '')
+                    content_encoding = proxy_response.headers.get('Content-Encoding', '')
+                    if 'application/json' in content_type:
+                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status} {proxy}")
+                        raw_data = await proxy_response.read()
+                        if 'gzip' in content_encoding:
+                            try:
+                                with gzip.GzipFile(fileobj=BytesIO(raw_data)) as gzip_file:
+                                    content = gzip_file.read().decode('utf-8')
+                            except Exception as e:
+                                logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {e}")
+                                content = raw_data.decode('utf-8')
+                        elif 'deflate' in content_encoding:
+                            try:
+                                content = zlib.decompress(raw_data).decode('utf-8')
+                            except Exception as e:
+                                logging.error(f"Failed to decompress deflate content for {url_to_fetch}: {e}")
+                                content = None
+                        else:
+                            content = raw_data.decode('utf-8')
+        
+                        if content:
+                            json_data = json.loads(content)
+                            return json_data
+                        else:
+                            remove_proxies(proxy)
+                            return {}
+                    else:
+                        remove_proxies(proxy)
+                        logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
+                        return {}
+                else:
+                    # try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                    try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
+                    if try_curl:
+                        return try_curl
+                    else:
+                        remove_proxies(proxy)
+                        logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                        return {}
+                        
+        except asyncio.TimeoutError:
+            remove_proxies(proxy)
+            logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
+            return {}
+        except aiohttp.ClientOSError as e:
+            remove_proxies(proxy)
+            logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
+            return {}
+        except ServerDisconnectedError as e:
+            remove_proxies(proxy)
+            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return {}
+        except ClientHttpProxyError as e:
+            remove_proxies(proxy)
+            logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return {}
+        except ClientError as e:
+            remove_proxies(proxy)
+            logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return {}
+        except Exception as e:
+            logging.error(f"Unexpected error on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                
+    else:
+        logging.error(f"Proxies not found")
+        return {}
+
+async def fetch_new_layout_with_proxy(session, url_to_fetch):
+    proxy = await manage_proxies()
+    if proxy:
+        if not "https" in proxy:
+            url_to_fetch = url_to_fetch.replace("https", "http")
+        logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy + url_to_fetch)
+        try:
+            headers = {
+                "User-Agent": random.choice(USER_AGENT_LIST),
+                "Accept": "*/*",
+                "Connection": "keep-alive"
+            }
+            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=30, allow_redirects=True) as proxy_response:
+                if proxy_response.status == 200:
+                    content_type = proxy_response.headers.get('Content-Type', '')
+                    if 'application/json' in content_type:
+                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status} {proxy}")
+                        json_data = await proxy_response.text()       
+                        return json_data
+                    else:
+                        remove_proxies(proxy)
+                        logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
+                        return ''
+                else:
+                    remove_proxies(proxy)
+                    logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+                    return ''
+        except asyncio.TimeoutError:
+            remove_proxies(proxy)
+            logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
+            return ''
+        except aiohttp.ClientOSError as e:
+            remove_proxies(proxy)
+            logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
+            return ''
+        except ServerDisconnectedError as e:
+            remove_proxies(proxy)
+            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return ''
+        except ClientHttpProxyError as e:
+            remove_proxies(proxy)
+            logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return ''
+        except ClientError as e:
+            remove_proxies(proxy)
+            logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+            return ''
+        except Exception as e:
+            logging.error(f"Unexpected error on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
+                
+    else:
+        logging.error(f"Proxies not found")
+        return ''
         
 async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> dict:
     url_to_fetch = subreddit_url
@@ -737,6 +1515,31 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
     cookies = {'reddit_session': reddit_session_cookie}
     session.cookie_jar.update_cookies(cookies)
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
+        if response.status == 429:
+            logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
+            return await fetch_with_proxy(session, url_to_fetch)
+            # await asyncio.sleep(60)
+            # proxy = await manage_proxies()
+            # if proxy:
+            #     if not "https" in proxy:
+            #         url_to_fetch = url_to_fetch.replace("https", "http")
+            #     logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
+            #     async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
+            #         if proxy_response.status == 200:
+            #             content_type = response.headers.get('Content-Type', '')
+            #             if 'application/json' in content_type:
+            #                 logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+            #                 return await proxy_response.json()
+            #             else:
+            #                 logging.error(f"Unexpected content type: {content_type}, URL: {url}")
+            #                 logging.error(f"Response content: {await response.text()}")
+            #         else:
+            #             logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+            #             return {}
+            return {} 
+        if response.status != 200:
+            logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status} for {url_to_fetch}")
+            return {}
         return await response.json()
 
 async def fetch_and_scrap_post(permalink):
@@ -901,6 +1704,7 @@ async def query(parameters: dict) -> AsyncGenerator[Item, None]:
     for i in range(nb_subreddit_attempts):
         await asyncio.sleep(random.uniform(1, i))
         url = await generate_url(**parameters["url_parameters"])
+        await manage_proxies()
         # if url ends with "/new/new/.json", replace it with "/new.json"
         if url.endswith("/new/new/.json"):
             url = url.replace("/new/new/.json", "/new.json")
