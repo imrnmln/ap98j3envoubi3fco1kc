@@ -940,23 +940,23 @@ def save_proxies(proxies, source):
 async def manage_proxies():
     sources, proxies = load_proxies()
     if not proxies:
-        if sources == "git":
+        logging.info("Fetch on github...")
+        proxies = await load_proxies_git()
+        if not proxies:
             logging.info("No proxies left, fetching new proxies...")
             proxies = await get_proxy()
-            save_proxies(proxies, "scrape")
-        else:
-            logging.info("Fetch on github...")
-            proxies = await load_proxies_git()
-            if not proxies:
-                logging.info("No proxies left, fetching new proxies...")
-                proxies = await get_proxy()
-                save_proxies(proxies, "scrape")
-        # logging.info("Fetch on github...")
-        # proxies = await load_proxies_git()
-        # if not proxies:
+            save_proxies(proxies, "git")
+        # if sources == "git":
         #     logging.info("No proxies left, fetching new proxies...")
         #     proxies = await get_proxy()
-        #     save_proxies(proxies, "git")
+        #     save_proxies(proxies, "scrape")
+        # else:
+        #     logging.info("Fetch on github...")
+        #     proxies = await load_proxies_git()
+        #     if not proxies:
+        #         logging.info("No proxies left, fetching new proxies...")
+        #         proxies = await get_proxy()
+        #         save_proxies(proxies, "scrape")
         
     return random.choice(proxies) if proxies else None
 
