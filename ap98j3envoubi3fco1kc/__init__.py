@@ -770,17 +770,17 @@ async def get_proxy():
     
     async with aiohttp.ClientSession() as session:
         # Fetch proxies from HTML-based URLs
-        tasks_html = [fetch_proxies(session, url) if 'spys.one' not in url else fetch_proxies_spys_one(session, url) for url in html_urls]
-        results_html = await asyncio.gather(*tasks_html)
+        # tasks_html = [fetch_proxies(session, url) if 'spys.one' not in url else fetch_proxies_spys_one(session, url) for url in html_urls]
+        # results_html = await asyncio.gather(*tasks_html)
         
         # Fetch proxies from JSON-based APIs
-        tasks_api = [fetch_proxies_from_api(session, url) for url in api_urls]
-        results_api = await asyncio.gather(*tasks_api)
+        # tasks_api = [fetch_proxies_from_api(session, url) for url in api_urls]
+        # results_api = await asyncio.gather(*tasks_api)
 
         # tasks_ptools = [fetch_proxies_ptools(session, url) for url in proxy_tools]
-        # page_urls = generate_ptools_urls("https://proxy-tools.com/proxy/https?page={}", 15) + generate_ptools_urls("https://proxy-tools.com/proxy/http?page={}", 100) + generate_ptools_urls("https://proxy-tools.com/proxy/socks?page={}", 30) + generate_ptools_urls("https://proxy-tools.com/proxy/anonymous?page={}", 80)
-        # tasks_ptools = [fetch_proxies_ptools(session, url) for url in page_urls]
-        # results_ptools = await asyncio.gather(*tasks_ptools)
+        page_urls = generate_ptools_urls("https://proxy-tools.com/proxy/https?page={}", 15) + generate_ptools_urls("https://proxy-tools.com/proxy/http?page={}", 15) + generate_ptools_urls("https://proxy-tools.com/proxy/socks?page={}", 15) + generate_ptools_urls("https://proxy-tools.com/proxy/anonymous?page={}", 15)
+        tasks_ptools = [fetch_proxies_ptools(session, url) for url in page_urls]
+        results_ptools = await asyncio.gather(*tasks_ptools)
 
         # Fetch proxies from Nova
         # tasks_nova = [fetch_proxies_nova(session, url) for url in nova_urls]
@@ -795,7 +795,7 @@ async def get_proxy():
         
         # Combine all results
         all_proxies = []
-        for proxy_list in results_html + results_api:
+        for proxy_list in results_ptools:
             all_proxies.extend(proxy_list)
         
         # Remove duplicates
@@ -940,24 +940,24 @@ def save_proxies(proxies, source):
 async def manage_proxies():
     sources, proxies = load_proxies()
     if not proxies:
-        logging.info("Fetch on github...")
-        proxies = await load_proxies_git()
-        if not proxies:
+        if sources == "git":
             logging.info("No proxies left, fetching new proxies...")
             proxies = await get_proxy()
-            save_proxies(proxies, "git")
-        # if sources == "git":
+            save_proxies(proxies, "scrape")
+        else:
+            logging.info("Fetch on github...")
+            proxies = await load_proxies_git()
+            if not proxies:
+                logging.info("No proxies left, fetching new proxies...")
+                proxies = await get_proxy()
+                save_proxies(proxies, "scrape")
+        # logging.info("Fetch on github...")
+        # proxies = await load_proxies_git()
+        # if not proxies:
         #     logging.info("No proxies left, fetching new proxies...")
         #     proxies = await get_proxy()
-        #     save_proxies(proxies, "scrape")
-        # else:
-        #     logging.info("Fetch on github...")
-        #     proxies = await load_proxies_git()
-        #     if not proxies:
-        #         logging.info("No proxies left, fetching new proxies...")
-        #         proxies = await get_proxy()
-        #         save_proxies(proxies, "scrape")
-
+        #     save_proxies(proxies, "git")
+        
     return random.choice(proxies) if proxies else None
 
 # async def manage_proxies():
