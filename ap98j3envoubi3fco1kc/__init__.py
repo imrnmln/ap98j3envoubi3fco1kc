@@ -946,7 +946,7 @@ async def rotate_tor_circuit():
             controller.authenticate()  # authenticate with the Tor process
             controller.signal(Signal.NEWNYM)  # Request a new circuit
             logging.info("New Tor circuit created")
-            await asyncio.sleep(2)
+            await asyncio.sleep(20)
     except Exception as e:
         logging.warning(f"Error rotating Tor circuit: {e}")
 
