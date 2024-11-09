@@ -1469,42 +1469,37 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
     session.cookie_jar.update_cookies(cookies)
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
-            logging.warning("[Reddit] [JSON MODE] Rate limit encountered for %s.", url_to_fetch)
-            try_with_proxy = await fetch_with_proxy(session, url_to_fetch)
-            if try_with_proxy:
-                return try_with_proxy
-            else:
-                logging.warning("[Reddit] [JSON MODE] [Try to use TOR] Rate limit encountered for %s.", url_to_fetch)
-                TOR_PROXY = "socks5://127.0.0.1:9050"
-                connector = ProxyConnector.from_url(TOR_PROXY)
-                async with aiohttp.ClientSession(connector=connector) as session:
-                    try:
-                        async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=aiohttp.ClientTimeout(total=30), allow_redirects=True) as response:
-                            if response.status == 200:
-                                content_type = response.headers.get('Content-Type', '').lower()
-                                if 'application/json' in content_type:
-                                    try:
-                                        return await response.json()
-                                    except Exception as e:
-                                        logging.warning(f"Failed to decode JSON: {e}")
-                                        return {} 
-                                elif 'text/html' in content_type:
-                                    logging.warning(f"Received HTML instead of JSON. Response Status: {response.status}")
-                                    html_content = await response.text()
-                                    logging.warning(f"HTML Content: {html_content[:500]}")
+            logging.warning("[Reddit] [JSON MODE] [Try to use TOR for Sub Reddit] Rate limit encountered for %s.", url_to_fetch)
+            TOR_PROXY = "socks5://127.0.0.1:9050"
+            connector = ProxyConnector.from_url(TOR_PROXY)
+            async with aiohttp.ClientSession(connector=connector) as session:
+                try:
+                    async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=aiohttp.ClientTimeout(total=30), allow_redirects=True) as response:
+                        if response.status == 200:
+                            content_type = response.headers.get('Content-Type', '').lower()
+                            if 'application/json' in content_type:
+                                try:
+                                    return await response.json()
+                                except Exception as e:
+                                    logging.warning(f"Failed to decode JSON: {e}")
                                     return {} 
-                                else:
-                                    logging.warning(f"Unexpected Content-Type: {content_type}")
-                                    return {} 
-                            else:
-                                logging.warning(f"Error via HTTP Proxy, status: {response.status}")
+                            elif 'text/html' in content_type:
+                                logging.warning(f"Received HTML instead of JSON. Response Status: {response.status}")
+                                html_content = await response.text()
+                                logging.warning(f"HTML Content: {html_content[:500]}")
                                 return {} 
-                    except asyncio.TimeoutError:
-                        logging.warning("Request timed out.")
-                        return {} 
-                    except Exception as e:
-                        logging.warning(f"An error occurred: {e}")
-                        return {} 
+                            else:
+                                logging.warning(f"Unexpected Content-Type: {content_type}")
+                                return {} 
+                        else:
+                            logging.warning(f"Error via HTTP Proxy, status: {response.status}")
+                            return {} 
+                except asyncio.TimeoutError:
+                    logging.warning("Request timed out.")
+                    return {} 
+                except Exception as e:
+                    logging.warning(f"An error occurred: {e}")
+                    return {} 
             # return await fetch_with_proxy(session, url_to_fetch)
             # await asyncio.sleep(60)
             # proxy = await manage_proxies()
