@@ -1465,7 +1465,7 @@ async def fetch_new_layout_with_proxy(session, url_to_fetch):
         logging.error(f"Proxies not found")
         return ''
         
-async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str) -> dict:
+async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str, lock: asyncio.Lock) -> dict:
     url_to_fetch = subreddit_url
     if "https:/reddit.com" in url_to_fetch:
         url_to_fetch = url_to_fetch.replace("https:/reddit.com", "https://reddit.com")
