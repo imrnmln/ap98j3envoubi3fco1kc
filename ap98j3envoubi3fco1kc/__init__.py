@@ -1164,7 +1164,7 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                         response = {} 
                                 else:
                                     if response_tor.status == 429:
-                                        rotate_tor_circuit()
+                                        await rotate_tor_circuit()
                                     logging.warning(f"Error via HTTP Proxy, status: {response_tor.status}")
                                     response = {} 
                         except asyncio.TimeoutError:
