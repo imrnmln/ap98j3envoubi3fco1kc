@@ -1138,27 +1138,27 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                     content_type = response_tor.headers.get('Content-Type', '').lower()
                                     if 'application/json' in content_type:
                                         try:
-                                            return await response_tor.json()
+                                            response = await response_tor.json()
                                         except Exception as e:
                                             logging.warning(f"Failed to decode JSON: {e}")
-                                            return {} 
+                                            response = {} 
                                     elif 'text/html' in content_type:
                                         logging.warning(f"Received HTML instead of JSON. Response Status: {response_tor.status}")
                                         html_content = await response_tor.text()
                                         logging.warning(f"HTML Content: {html_content[:500]}")
-                                        return {} 
+                                        response = {} 
                                     else:
                                         logging.warning(f"Unexpected Content-Type: {content_type}")
-                                        return {} 
+                                        response = {} 
                                 else:
                                     logging.warning(f"Error via HTTP Proxy, status: {response_tor.status}")
-                                    return {} 
+                                    response = {} 
                         except asyncio.TimeoutError:
                             logging.warning("Request timed out.")
-                            return {} 
+                            response = {} 
                         except Exception as e:
                             logging.warning(f"An error occurred: {e}")
-                            return {} 
+                            response = {} 
                 else:
                     response = await response.json()
 
