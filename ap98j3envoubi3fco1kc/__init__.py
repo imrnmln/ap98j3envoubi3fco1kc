@@ -1128,90 +1128,37 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                 headers={"User-Agent": random.choice(USER_AGENT_LIST)},     
                 timeout=BASE_TIMEOUT) as response:
                 if response.status == 429:
-                    logging.warning("[Reddit] Scraping - getting Rate limit encountered for %s.", _url)
-                    # response = await fetch_with_proxy(session, _url)
-                    proxy = await manage_proxies()
-                    if proxy:
-                        url_to_fetch = _url
-                        if not "https" in proxy:
-                            url_to_fetch = url_to_fetch.replace("https", "http")
-                            
+                    logging.warning("[Reddit] [COMMENT SECTION] [Try to use TOR]  Scraping - getting Rate limit encountered for %s.", _url)
+                    TOR_PROXY = "socks5://127.0.0.1:9050"
+                    connector = ProxyConnector.from_url(TOR_PROXY)
+                    async with aiohttp.ClientSession(connector=connector) as session:
                         try:
-                            headers = {
-                                "User-Agent": random.choice(USER_AGENT_LIST),
-                                "Accept-Encoding": "gzip, deflate",
-                                "Accept": "*/*",
-                                "Connection": "keep-alive"
-                            }
-                            async with session.get(url_to_fetch, proxy=proxy, headers=headers, timeout=30, allow_redirects=True) as proxy_response:
-                                if proxy_response.status == 200:
-                                    content_type = proxy_response.headers.get('Content-Type', '')
-                                    content_encoding = proxy_response.headers.get('Content-Encoding', '')
-                        
+                            async with session.get(_url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=aiohttp.ClientTimeout(total=30), allow_redirects=True) as response_tor:
+                                if response_tor.status == 200:
+                                    content_type = response_tor.headers.get('Content-Type', '').lower()
                                     if 'application/json' in content_type:
-                                        logging.info(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status} {proxy}")
-                                        raw_data = await proxy_response.read()
-                                        if 'gzip' in content_encoding:
-                                            try:
-                                                with gzip.GzipFile(fileobj=BytesIO(raw_data)) as gzip_file:
-                                                    content = gzip_file.read().decode('utf-8')
-                                            except Exception as e:
-                                                logging.error(f"Failed to decompress gzip content for {url_to_fetch}: {e}")
-                                                content = raw_data.decode('utf-8')
-                                        elif 'deflate' in content_encoding:
-                                            try:
-                                                content = zlib.decompress(raw_data).decode('utf-8')
-                                            except Exception as e:
-                                                logging.error(f"Failed to decompress deflate content for {url_to_fetch}: {e}")
-                                                content = None
-                                        else:
-                                            content = raw_data.decode('utf-8')
-                        
-                                        if content:
-                                            response = json.loads(content)
-                                        else:
-                                            remove_proxies(proxy)
-                                            response = {}
+                                        try:
+                                            return await response_tor.json()
+                                        except Exception as e:
+                                            logging.warning(f"Failed to decode JSON: {e}")
+                                            return {} 
+                                    elif 'text/html' in content_type:
+                                        logging.warning(f"Received HTML instead of JSON. Response Status: {response_tor.status}")
+                                        html_content = await response_tor.text()
+                                        logging.warning(f"HTML Content: {html_content[:500]}")
+                                        return {} 
                                     else:
-                                        remove_proxies(proxy)
-                                        logging.error(f"Unexpected content type: {content_type}, URL: {url_to_fetch}")
-                                        response = {}
+                                        logging.warning(f"Unexpected Content-Type: {content_type}")
+                                        return {} 
                                 else:
-                                    # try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
-                                    try_curl = await fetch_with_proxy_using_curl(url_to_fetch, proxy)
-                                    if try_curl:
-                                        response = try_curl
-                                    else:
-                                        remove_proxies(proxy)
-                                        logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-                                        response = {}
-                                        
+                                    logging.warning(f"Error via HTTP Proxy, status: {response_tor.status}")
+                                    return {} 
                         except asyncio.TimeoutError:
-                            remove_proxies(proxy)
-                            logging.error(f"Timeout occurred on attempt for URL {url_to_fetch} with proxy {proxy}")
-                            response = {}
-                        except aiohttp.ClientOSError as e:
-                            remove_proxies(proxy)
-                            logging.error(f"ClientOSError on attempt for URL {url_to_fetch} with proxy {proxy}")
-                            response = {}
-                        except ServerDisconnectedError as e:
-                            remove_proxies(proxy)
-                            logging.error(f"ServerDisconnectedError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-                            response = {}
-                        except ClientHttpProxyError as e:
-                            remove_proxies(proxy)
-                            logging.error(f"ClientHttpProxyError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-                            response = {}
-                        except ClientError as e:
-                            remove_proxies(proxy)
-                            logging.error(f"ClientError on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-                            response = {}
+                            logging.warning("Request timed out.")
+                            return {} 
                         except Exception as e:
-                            logging.error(f"Unexpected error on attempt for URL {url_to_fetch} with proxy {proxy}: {e}")
-                                
-                    else:
-                        logging.error(f"Proxies not found")
-                        response = {}
+                            logging.warning(f"An error occurred: {e}")
+                            return {} 
                 else:
                     response = await response.json()
 
