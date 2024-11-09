@@ -3,6 +3,8 @@ import subprocess
 import aiohttp
 from aiohttp.client_exceptions import ClientError, ServerDisconnectedError, ClientHttpProxyError
 from aiohttp_socks import ProxyConnector
+from stem import Signal
+from stem.control import Controller
 import dotenv
 import os
 import json
@@ -938,6 +940,15 @@ def save_proxies(proxies, source):
         
     logging.info(f"Saved proxies. Total unique proxies: {len(unique_proxies)}")
 
+def rotate_tor_circuit():
+    try:
+        with Controller.from_port(port=9051) as controller:
+            controller.authenticate()  # authenticate with the Tor process
+            controller.signal(Signal.NEWNYM)  # Request a new circuit
+            logging.info("New Tor circuit created")
+    except Exception as e:
+        logging.warning(f"Error rotating Tor circuit: {e}")
+
 async def manage_proxies():
     sources, proxies = load_proxies()
     if not proxies:
@@ -1151,6 +1162,8 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                         logging.warning(f"Unexpected Content-Type: {content_type}")
                                         response = {} 
                                 else:
+                                    if response_tor.status == 429:
+                                        rotate_tor_circuit()
                                     logging.warning(f"Error via HTTP Proxy, status: {response_tor.status}")
                                     response = {} 
                         except asyncio.TimeoutError:
@@ -1492,6 +1505,9 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
                                 logging.warning(f"Unexpected Content-Type: {content_type}")
                                 return {} 
                         else:
+                            if response.status == 429:
+                                rotate_tor_circuit()
+                                
                             logging.warning(f"Error via HTTP Proxy, status: {response.status}")
                             return {} 
                 except asyncio.TimeoutError:
