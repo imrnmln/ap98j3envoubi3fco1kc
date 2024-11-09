@@ -940,12 +940,13 @@ def save_proxies(proxies, source):
         
     logging.info(f"Saved proxies. Total unique proxies: {len(unique_proxies)}")
 
-def rotate_tor_circuit():
+async def rotate_tor_circuit():
     try:
         with Controller.from_port(port=9051) as controller:
             controller.authenticate()  # authenticate with the Tor process
             controller.signal(Signal.NEWNYM)  # Request a new circuit
             logging.info("New Tor circuit created")
+            await asyncio.sleep(2)
     except Exception as e:
         logging.warning(f"Error rotating Tor circuit: {e}")
 
@@ -1506,7 +1507,8 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
                                 return {} 
                         else:
                             if response.status == 429:
-                                rotate_tor_circuit()
+                                async with lock:
+                                    await rotate_tor_circuit()
                                 
                             logging.warning(f"Error via HTTP Proxy, status: {response.status}")
                             return {} 
@@ -1559,7 +1561,8 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
     cookies = {'reddit_session': reddit_session_cookie}
     logging.info("[Reddit] [JSON MODE] opening urls: %s", urls)
     async with aiohttp.ClientSession(cookies=cookies) as session:
-        tasks = [fetch_subreddit_json(session, url) for url in urls]
+        lock = asyncio.Lock()
+        tasks = [fetch_subreddit_json(session, url, lock) for url in urls]
         json_responses = await asyncio.gather(*tasks)
         
         for data, url in zip(json_responses, urls):
