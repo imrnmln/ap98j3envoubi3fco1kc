@@ -2,7 +2,7 @@ import random
 import subprocess
 import aiohttp
 from aiohttp.client_exceptions import ClientError, ServerDisconnectedError, ClientHttpProxyError
-from aiohttp_socks import ProxyConnector
+from aiohttp_socks import ProxyConnector, SocksConnector
 from stem import Signal
 from stem.control import Controller
 import dotenv
@@ -1173,7 +1173,9 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                     logging.warning("[Reddit] [COMMENT SECTION] [Try to use TOR]  Scraping - getting Rate limit encountered for %s.", _url)
                     socks_port = random.choice(TOR_PORTS)
                     TOR_PROXY = f"socks5://127.0.0.1:{socks_port}"
-                    connector = ProxyConnector.from_url(TOR_PROXY)
+                    TOR_PROXY = f"socks5h://127.0.0.1:{socks_port}"  # Using 'socks5h' to resolve DNS through Tor
+                    connector = SocksConnector.from_url(TOR_PROXY)
+                    #connector = ProxyConnector.from_url(TOR_PROXY)
                     async with aiohttp.ClientSession(connector=connector) as session:
                         try:
                             async with session.get(_url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=aiohttp.ClientTimeout(total=30), allow_redirects=True) as response_tor:
@@ -1519,6 +1521,8 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
             socks_port = random.choice(TOR_PORTS)
             TOR_PROXY = f"socks5://127.0.0.1:{socks_port}"
             connector = ProxyConnector.from_url(TOR_PROXY)
+            TOR_PROXY = f"socks5h://127.0.0.1:{socks_port}"  # Using 'socks5h' to resolve DNS through Tor
+            connector = SocksConnector.from_url(TOR_PROXY)
             async with aiohttp.ClientSession(connector=connector) as session:
                 try:
                     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=aiohttp.ClientTimeout(total=30), allow_redirects=True) as response:
