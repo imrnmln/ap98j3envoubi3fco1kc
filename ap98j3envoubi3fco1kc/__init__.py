@@ -1544,7 +1544,7 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
             return {}
         return await response.json()
 
-async def fetch_and_scrap_post(permalink, lock):
+async def fetch_and_scrap_post(permalink, lock: asyncio.Lock):
     post_url = permalink
     if not post_url.startswith("https://"):
         post_url = f"https://reddit.com{post_url}"
