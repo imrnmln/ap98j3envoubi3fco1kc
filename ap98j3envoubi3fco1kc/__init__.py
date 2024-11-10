@@ -440,6 +440,7 @@ subreddits_top_1000 = [
 tor_lock = asyncio.Lock()
 # A flag to track whether the Tor circuit rotation is already in progress
 circuit_rotation_in_progress = False
+TOR_PORTS = [9050, 9051, 9052, 9053, 9054, 9055, 9056, 9057, 9058, 9059]
 
 
 async def load_env_variable(key, default_value=None, none_allowed=False):
@@ -1170,7 +1171,8 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                 timeout=BASE_TIMEOUT) as response:
                 if response.status == 429:
                     logging.warning("[Reddit] [COMMENT SECTION] [Try to use TOR]  Scraping - getting Rate limit encountered for %s.", _url)
-                    TOR_PROXY = "socks5://127.0.0.1:9050"
+                    socks_port = random.choice(TOR_PORTS)
+                    TOR_PROXY = f"socks5://127.0.0.1:{socks_port}"
                     connector = ProxyConnector.from_url(TOR_PROXY)
                     async with aiohttp.ClientSession(connector=connector) as session:
                         try:
@@ -1192,9 +1194,8 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                                         logging.warning(f"Unexpected Content-Type: {content_type}")
                                         response = {} 
                                 else:
-                                    if response_tor.status == 429:
-                                        await rotate_tor_circuit()
-                                    
+                                    #if response_tor.status == 429:
+                                        #await rotate_tor_circuit()
                                     logging.warning(f"Error via HTTP Proxy, status: {response_tor.status}")
                                     response = {} 
                         except asyncio.TimeoutError:
@@ -1515,6 +1516,8 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] [Try to use TOR for Sub Reddit] Rate limit encountered for %s.", url_to_fetch)
             TOR_PROXY = "socks5://127.0.0.1:9050"
+            socks_port = random.choice(TOR_PORTS)
+            TOR_PROXY = f"socks5://127.0.0.1:{socks_port}"
             connector = ProxyConnector.from_url(TOR_PROXY)
             async with aiohttp.ClientSession(connector=connector) as session:
                 try:
@@ -1536,9 +1539,8 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
                                 logging.warning(f"Unexpected Content-Type: {content_type}")
                                 return {} 
                         else:
-                            if response.status == 429:
-                                await rotate_tor_circuit()
-                                
+                            #if response.status == 429:
+                                #await rotate_tor_circuit()
                             logging.warning(f"Error via HTTP Proxy, status: {response.status}")
                             return {} 
                 except asyncio.TimeoutError:
