@@ -440,7 +440,7 @@ subreddits_top_1000 = [
 tor_lock = asyncio.Lock()
 # A flag to track whether the Tor circuit rotation is already in progress
 circuit_rotation_in_progress = False
-TOR_PORTS = [9050, 9052, 9054, 9056, 9058]
+TOR_PORTS = [9050, 9052, 9054, 9056, 9058, 9060, 9062, 9064, 9066, 9068]
 
 
 async def load_env_variable(key, default_value=None, none_allowed=False):
@@ -1059,11 +1059,11 @@ async def generate_url(autonomous_subreddit_choice=0.35, keyword: str = "news"):
         if random.random() < 0.35:     
             logging.info("[Reddit] Top 225 Subreddits mode!")       
             selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
+            #selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
         else:            
             logging.info("[Reddit] Top 1000 Subreddits mode!")
             selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
+            #selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
         
         return selected_subreddit_
 
@@ -1162,9 +1162,9 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
         async with aiohttp.ClientSession() as session:
             _url = url + ".json?sort=new"
             logging.info(f"[Reddit] Scraping - getting {_url}")
-            reddit_session_cookie = await get_email(".env") 
-            cookies = {'reddit_session': reddit_session_cookie}
-            session.cookie_jar.update_cookies(cookies)
+            #reddit_session_cookie = await get_email(".env") 
+            #cookies = {'reddit_session': reddit_session_cookie}
+            #session.cookie_jar.update_cookies(cookies)
             #session.cookie_jar.update_cookies({'reddit_session': reddit_session_cookie, 'domain': '.reddit.com'})
             async with session.get(_url, 
                 headers={"User-Agent": random.choice(USER_AGENT_LIST)},     
@@ -1512,9 +1512,9 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
         url_to_fetch = url_to_fetch.replace("/new/new/.json", "/new/.json")
     
     logging.info("[Reddit] [JSON MODE] opening: %s", url_to_fetch)
-    reddit_session_cookie = await get_email(".env") 
-    cookies = {'reddit_session': reddit_session_cookie}
-    session.cookie_jar.update_cookies(cookies)
+    #reddit_session_cookie = await get_email(".env") 
+    #cookies = {'reddit_session': reddit_session_cookie}
+    #session.cookie_jar.update_cookies(cookies)
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] [Try to use TOR for Sub Reddit] Rate limit encountered for %s.", url_to_fetch)
