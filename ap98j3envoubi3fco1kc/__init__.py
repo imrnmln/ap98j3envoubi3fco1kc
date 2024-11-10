@@ -440,7 +440,7 @@ subreddits_top_1000 = [
 tor_lock = asyncio.Lock()
 # A flag to track whether the Tor circuit rotation is already in progress
 circuit_rotation_in_progress = False
-TOR_PORTS = [9050, 9052, 9054, 9056, 9058, 9060, 9062, 9064, 9066, 9068, 9070, 9072, 9074, 9076, 9078, 9080, 9082, 9084, 9086, 9088, 9090, 9092, 9094, 9096, 9098, 9100, 9102, 9104, 9106, 9108]
+TOR_PORTS = [9050, 9052, 9054, 9056, 9058, 9060, 9062, 9064, 9066, 9068, 9070, 9072, 9074, 9076, 9078, 9080, 9082, 9084, 9086, 9088]
 
 
 async def load_env_variable(key, default_value=None, none_allowed=False):
