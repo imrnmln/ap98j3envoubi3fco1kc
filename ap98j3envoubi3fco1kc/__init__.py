@@ -436,7 +436,7 @@ subreddits_top_1000 = [
     "r/doctorsUK","r/Entrepreneur","r/bluey","r/careeradvice","r/kolkata","r/arborists","r/TheMajorityReport","r/4Runner","r/GalaxyFold","r/gaybros",
     "r/Calgary","r/furry","r/csMajors","r/Bedbugs","r/DBZDokkanBattle","r/mumbai","r/popheadscirclejerk","r/marvelmemes","r/Egypt","r/Topster",
 ]
-
+tor_lock = asyncio.Lock()
 
 async def load_env_variable(key, default_value=None, none_allowed=False):
     v = os.getenv(key, default=default_value)
@@ -941,15 +941,15 @@ def save_proxies(proxies, source):
     logging.info(f"Saved proxies. Total unique proxies: {len(unique_proxies)}")
 
 async def rotate_tor_circuit():
-    try:
-        with Controller.from_port(port=9051) as controller:
-            controller.authenticate()  # authenticate with the Tor process
-            controller.signal(Signal.NEWNYM)  # Request a new circuit
-            logging.info("New Tor circuit created")
-            await asyncio.sleep(20)
-    except Exception as e:
-        logging.warning(f"Error rotating Tor circuit: {e}")
-
+    async with tor_lock:
+        try:
+            with Controller.from_port(port=9051) as controller:
+                controller.authenticate()  # Authenticate to Tor
+                controller.signal(Signal.NEWNYM)  # Rotate the circuit
+                logging.info("Tor circuit rotated successfully!")
+        except Exception as e:
+            logging.error(f"Error rotating Tor circuit: {e}")
+            
 async def manage_proxies():
     sources, proxies = load_proxies()
     if not proxies:
@@ -1164,8 +1164,8 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                                         response = {} 
                                 else:
                                     if response_tor.status == 429:
-                                        async with lock:
-                                            await rotate_tor_circuit()
+                                        await rotate_tor_circuit()
+                                    
                                     logging.warning(f"Error via HTTP Proxy, status: {response_tor.status}")
                                     response = {} 
                         except asyncio.TimeoutError:
@@ -1508,8 +1508,7 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
                                 return {} 
                         else:
                             if response.status == 429:
-                                async with lock:
-                                    await rotate_tor_circuit()
+                                await rotate_tor_circuit()
                                 
                             logging.warning(f"Error via HTTP Proxy, status: {response.status}")
                             return {} 
