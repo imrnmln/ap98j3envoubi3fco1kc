@@ -961,7 +961,7 @@ async def rotate_tor_circuit():
         circuit_rotation_in_progress = True
 
     try:
-        with Controller.from_port(port=9051) as controller:
+        with Controller.from_port(port=9050) as controller:
             controller.authenticate()  # Authenticate to Tor
             controller.signal(Signal.NEWNYM)  # Rotate the circuit
             print("Tor circuit rotated successfully!")
