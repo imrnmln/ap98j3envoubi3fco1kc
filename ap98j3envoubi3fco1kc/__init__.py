@@ -436,7 +436,11 @@ subreddits_top_1000 = [
     "r/doctorsUK","r/Entrepreneur","r/bluey","r/careeradvice","r/kolkata","r/arborists","r/TheMajorityReport","r/4Runner","r/GalaxyFold","r/gaybros",
     "r/Calgary","r/furry","r/csMajors","r/Bedbugs","r/DBZDokkanBattle","r/mumbai","r/popheadscirclejerk","r/marvelmemes","r/Egypt","r/Topster",
 ]
+
 tor_lock = asyncio.Lock()
+# A flag to track whether the Tor circuit rotation is already in progress
+circuit_rotation_in_progress = False
+
 
 async def load_env_variable(key, default_value=None, none_allowed=False):
     v = os.getenv(key, default=default_value)
@@ -940,20 +944,41 @@ def save_proxies(proxies, source):
         
     logging.info(f"Saved proxies. Total unique proxies: {len(unique_proxies)}")
 
+
 async def rotate_tor_circuit():
+    """Rotate the Tor circuit, but only allow one task to do it at a time."""
+    global circuit_rotation_in_progress
+
     async with tor_lock:
-        try:
-            with Controller.from_port(port=9051) as controller:
-                controller.authenticate()  # Authenticate to Tor
-                controller.signal(Signal.NEWNYM)  # Rotate the circuit
-                logging.info("Tor circuit rotated successfully!")
-                
-            # Simulate a delay after rotating the circuit (e.g., to wait for the circuit to be ready)
-            print("Waiting for the new circuit to stabilize...")
-            await asyncio.sleep(30)
-        except Exception as e:
-            logging.error(f"Error rotating Tor circuit: {e}")
-            
+        # If rotation is already in progress, wait for it to finish
+        if circuit_rotation_in_progress:
+            print("Tor rotation already in progress, waiting...")
+            while circuit_rotation_in_progress:
+                await asyncio.sleep(0.1)  # Small delay to prevent busy-waiting
+            return
+
+        # Mark that rotation is in progress
+        circuit_rotation_in_progress = True
+
+    try:
+        with Controller.from_port(port=9051) as controller:
+            controller.authenticate()  # Authenticate to Tor
+            controller.signal(Signal.NEWNYM)  # Rotate the circuit
+            print("Tor circuit rotated successfully!")
+
+        # Simulate a delay after rotating the circuit (e.g., to wait for the circuit to be ready)
+        print("Waiting for the new circuit to stabilize...")
+        await asyncio.sleep(5)  # Non-blocking sleep for 5 seconds
+
+    except Exception as e:
+        print(f"Error rotating Tor circuit: {e}")
+
+    finally:
+        # Mark rotation as complete
+        circuit_rotation_in_progress = False
+
+
+
 async def manage_proxies():
     sources, proxies = load_proxies()
     if not proxies:
