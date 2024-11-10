@@ -1173,7 +1173,7 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                     logging.warning("[Reddit] [COMMENT SECTION] [Try to use TOR]  Scraping - getting Rate limit encountered for %s.", _url)
                     socks_port = random.choice(TOR_PORTS)
                     TOR_PROXY = f"socks5://127.0.0.1:{socks_port}"
-                    TOR_PROXY = f"socks5h://127.0.0.1:{socks_port}"  # Using 'socks5h' to resolve DNS through Tor
+                    #TOR_PROXY = f"socks5h://127.0.0.1:{socks_port}"  # Using 'socks5h' to resolve DNS through Tor
                     connector = SocksConnector.from_url(TOR_PROXY)
                     #connector = ProxyConnector.from_url(TOR_PROXY)
                     async with aiohttp.ClientSession(connector=connector) as session:
@@ -1520,8 +1520,8 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
             TOR_PROXY = "socks5://127.0.0.1:9050"
             socks_port = random.choice(TOR_PORTS)
             TOR_PROXY = f"socks5://127.0.0.1:{socks_port}"
-            connector = ProxyConnector.from_url(TOR_PROXY)
-            TOR_PROXY = f"socks5h://127.0.0.1:{socks_port}"  # Using 'socks5h' to resolve DNS through Tor
+            #connector = ProxyConnector.from_url(TOR_PROXY)
+            #TOR_PROXY = f"socks5h://127.0.0.1:{socks_port}"  # Using 'socks5h' to resolve DNS through Tor
             connector = SocksConnector.from_url(TOR_PROXY)
             async with aiohttp.ClientSession(connector=connector) as session:
                 try:
