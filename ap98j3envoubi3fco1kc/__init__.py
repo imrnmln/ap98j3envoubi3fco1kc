@@ -1289,7 +1289,8 @@ async def scrap_subreddit_new_layout(subreddit_urls: str) -> AsyncGenerator[str,
                     if post_url.startswith("/r/"):
                         post_url = "https://www.reddit.com" + post_url
                     try:
-                        async for item in scrap_post(post_url):
+                        lock = asyncio.Lock()
+                        async for item in scrap_post(post_url, lock):
                             yield item
                     except Exception as e:
                         logging.exception(f"[Reddit] [NEW LAYOUT MODE] Error detected: {e}")
