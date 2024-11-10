@@ -440,7 +440,7 @@ subreddits_top_1000 = [
 tor_lock = asyncio.Lock()
 # A flag to track whether the Tor circuit rotation is already in progress
 circuit_rotation_in_progress = False
-TOR_PORTS = [9050, 9052, 9054, 9056, 9058, 9060, 9062, 9064, 9066, 9068, 9070, 9072, 9074, 9076, 9078, 9080, 9082, 9084, 9086, 9088]
+TOR_PORTS = [9050, 9052, 9054, 9056, 9058, 9060, 9062, 9064, 9066, 9068, 9070, 9072, 9074, 9076, 9078, 9080, 9082, 9084, 9086, 9088, 9090, 9092, 9094, 9096, 9098, 9100, 9102, 9104, 9106, 9108]
 
 
 async def load_env_variable(key, default_value=None, none_allowed=False):
@@ -1198,7 +1198,7 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                                 else:
                                     #if response_tor.status == 429:
                                         #await rotate_tor_circuit()
-                                    logging.warning(f"Error via HTTP Proxy, status: {response_tor.status}")
+                                    logging.warning(f"Error via HTTP Proxy, status: {response_tor.status} {TOR_PROXY}")
                                     response = {} 
                         except asyncio.TimeoutError:
                             logging.warning("Request timed out.")
@@ -1546,7 +1546,7 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
                         else:
                             #if response.status == 429:
                                 #await rotate_tor_circuit()
-                            logging.warning(f"Error via HTTP Proxy, status: {response.status}")
+                            logging.warning(f"Error via HTTP Proxy, status: {response.status} {TOR_PROXY}")
                             return {} 
                 except asyncio.TimeoutError:
                     logging.warning("Request timed out.")
