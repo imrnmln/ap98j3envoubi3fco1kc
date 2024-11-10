@@ -946,6 +946,7 @@ async def rotate_tor_circuit():
             with Controller.from_port(port=9051) as controller:
                 controller.authenticate()  # Authenticate to Tor
                 controller.signal(Signal.NEWNYM)  # Rotate the circuit
+                await asyncio.sleep(60)
                 logging.info("Tor circuit rotated successfully!")
         except Exception as e:
             logging.error(f"Error rotating Tor circuit: {e}")
