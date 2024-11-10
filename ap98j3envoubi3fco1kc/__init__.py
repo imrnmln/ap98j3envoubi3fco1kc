@@ -1060,7 +1060,7 @@ def extract_subreddit_name(input_string):
         return match.group(1)
     return None
 
-async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
+async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]:
     resolvers = {}
 
     async def post(data) -> AsyncGenerator[Item, None]:
@@ -1164,7 +1164,8 @@ async def scrap_post(url: str) -> AsyncGenerator[Item, None]:
                                         response = {} 
                                 else:
                                     if response_tor.status == 429:
-                                        await rotate_tor_circuit()
+                                        async with lock:
+                                            await rotate_tor_circuit()
                                     logging.warning(f"Error via HTTP Proxy, status: {response_tor.status}")
                                     response = {} 
                         except asyncio.TimeoutError:
@@ -1543,13 +1544,13 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
             return {}
         return await response.json()
 
-async def fetch_and_scrap_post(permalink):
+async def fetch_and_scrap_post(permalink, lock):
     post_url = permalink
     if not post_url.startswith("https://"):
         post_url = f"https://reddit.com{post_url}"
     items = []
     try:
-        async for item in scrap_post(post_url):
+        async for item in scrap_post(post_url, lock):
             items.append(item)
     except Exception as e:
         logging.exception(f"[Reddit] [JSON MODE] Error detected: {e} {post_url}")
@@ -1569,9 +1570,10 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
             if data:
                 permalinks = list(find_permalinks(data))
                 tasks = []
+                lock = asyncio.Lock()
                 for permalink in permalinks:
                     logging.warning("[Reddit] [JSON MODE] find permalink, add to tasks %s.", permalink)
-                    tasks.append(fetch_and_scrap_post(permalink))
+                    tasks.append(fetch_and_scrap_post(permalink, lock))
             
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 for result in results:
@@ -1715,7 +1717,8 @@ async def query(parameters: dict) -> AsyncGenerator[Item, None]:
             raise ValueError(f"Not a Reddit URL {url}")
         url_parameters = url.split("reddit.com")[1].split("/")[1:]
         if "comments" in url_parameters:
-            async for result in scrap_post(url):
+            lock = asyncio.Lock()
+            async for result in scrap_post(url, lock):
 
                 yielded_items += 1
                 result = post_process_item(result)
