@@ -946,38 +946,19 @@ def save_proxies(proxies, source):
     logging.info(f"Saved proxies. Total unique proxies: {len(unique_proxies)}")
 
 
-async def rotate_tor_circuit():
-    """Rotate the Tor circuit, but only allow one task to do it at a time."""
-    global circuit_rotation_in_progress
-
-    async with tor_lock:
-        # If rotation is already in progress, wait for it to finish
-        if circuit_rotation_in_progress:
-            print("Tor rotation already in progress, waiting...")
-            while circuit_rotation_in_progress:
-                await asyncio.sleep(0.1)  # Small delay to prevent busy-waiting
-            return
-
-        # Mark that rotation is in progress
-        circuit_rotation_in_progress = True
-
+async def rotate_tor_circuit(controller_port):
     try:
-        with Controller.from_port(port=9050) as controller:
-            controller.authenticate()  # Authenticate to Tor
-            controller.signal(Signal.NEWNYM)  # Rotate the circuit
+        with Controller.from_port(port=controller_port) as controller:
+            controller.authenticate()
+            controller.signal(Signal.NEWNYM)
             print("Tor circuit rotated successfully!")
 
         # Simulate a delay after rotating the circuit (e.g., to wait for the circuit to be ready)
-        print("Waiting for the new circuit to stabilize...")
-        await asyncio.sleep(5)  # Non-blocking sleep for 5 seconds
+        logging.info(f"Waiting for the new circuit to stabilize after rotating tor {controller_port}...")
+        await asyncio.sleep(5)
 
     except Exception as e:
-        print(f"Error rotating Tor circuit: {e}")
-
-    finally:
-        # Mark rotation as complete
-        circuit_rotation_in_progress = False
-
+        logging.error(f"Error rotating Tor circuit: {e}")
 
 
 async def manage_proxies():
@@ -1196,8 +1177,8 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                                         logging.warning(f"Unexpected Content-Type: {content_type}")
                                         response = {} 
                                 else:
-                                    #if response_tor.status == 429:
-                                        #await rotate_tor_circuit()
+                                    if response_tor.status == 429:
+                                        await rotate_tor_circuit(socks_port+1)
                                     logging.warning(f"Error via HTTP Proxy, status: {response_tor.status} {TOR_PROXY}")
                                     response = {} 
                         except asyncio.TimeoutError:
@@ -1544,8 +1525,8 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
                                 logging.warning(f"Unexpected Content-Type: {content_type}")
                                 return {} 
                         else:
-                            #if response.status == 429:
-                                #await rotate_tor_circuit()
+                            if response.status == 429:
+                                await rotate_tor_circuit(socks_port+1)
                             logging.warning(f"Error via HTTP Proxy, status: {response.status} {TOR_PROXY}")
                             return {} 
                 except asyncio.TimeoutError:
