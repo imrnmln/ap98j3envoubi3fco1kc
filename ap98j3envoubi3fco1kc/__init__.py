@@ -1177,8 +1177,8 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                                         logging.warning(f"Unexpected Content-Type: {content_type}")
                                         response = {} 
                                 else:
-                                    if response_tor.status == 429:
-                                        await rotate_tor_circuit(socks_port+1)
+                                    # if response_tor.status == 429:
+                                    #     await rotate_tor_circuit(socks_port+1)
                                     logging.warning(f"Error via HTTP Proxy, status: {response_tor.status} {TOR_PROXY}")
                                     response = {} 
                         except asyncio.TimeoutError:
@@ -1525,8 +1525,8 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
                                 logging.warning(f"Unexpected Content-Type: {content_type}")
                                 return {} 
                         else:
-                            if response.status == 429:
-                                await rotate_tor_circuit(socks_port+1)
+                            # if response.status == 429:
+                            #     await rotate_tor_circuit(socks_port+1)
                             logging.warning(f"Error via HTTP Proxy, status: {response.status} {TOR_PROXY}")
                             return {} 
                 except asyncio.TimeoutError:
