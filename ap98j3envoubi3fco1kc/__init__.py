@@ -1,4 +1,6 @@
 import random
+import string
+import uuid
 import subprocess
 import aiohttp
 from aiohttp.client_exceptions import ClientError, ServerDisconnectedError, ClientHttpProxyError
@@ -443,6 +445,14 @@ circuit_rotation_in_progress = False
 TOR_PORTS = [9050, 9052, 9054, 9056, 9058, 9060, 9062, 9064, 9066, 9068, 9070, 9072, 9074, 9076, 9078, 9080, 9082, 9084, 9086, 9088]
 
 
+async def generate_random_string():
+    numeric_id = ''.join(random.choices(string.digits, k=15))
+    timestamp = datett.now() - timedelta(days=random.randint(0, 30))
+    timestamp_str = timestamp.strftime("%Y-%m-%dT%H:%M:%S")
+    random_hash = uuid.uuid4().hex[:40]
+    random_string = f"{numeric_id}%2C{timestamp_str}%2C{random_hash}"
+    return random_string
+
 async def load_env_variable(key, default_value=None, none_allowed=False):
     v = os.getenv(key, default=default_value)
     if v is None and not none_allowed:
@@ -455,14 +465,14 @@ async def get_email(env):
     now_utc = datett.now(pytz.utc).time()
     start_time = tttime(0, 0)
     end_time = tttime(12, 0)
-    if start_time <= now_utc < end_time:
-        default_var = await load_env_variable("SCWEET_USERNAME", none_allowed=True)
-        if len(default_var) < 70:
-            default_var = await load_env_variable("SCWEET_EMAIL", none_allowed=True)
-    else:
-        default_var = await load_env_variable("SCWEET_EMAIL", none_allowed=True)
+    # if start_time <= now_utc < end_time:
+    #     default_var = await load_env_variable("SCWEET_USERNAME", none_allowed=True)
+    #     if len(default_var) < 70:
+    #         default_var = await load_env_variable("SCWEET_EMAIL", none_allowed=True)
+    # else:
+    #     default_var = await load_env_variable("SCWEET_EMAIL", none_allowed=True)
     
-    return default_var
+    return await generate_random_string()
 
 
 async def get_token(env):
