@@ -1187,10 +1187,20 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                                         logging.warning(f"Unexpected Content-Type: {content_type}")
                                         response = {} 
                                 else:
-                                    # if response_tor.status == 429:
-                                    #     await rotate_tor_circuit(socks_port+1)
-                                    logging.warning(f"Error via HTTP Proxy, status: {response_tor.status} {TOR_PROXY}")
-                                    response = {} 
+                                    if response_tor.status == 429:
+                                        response = tor_via_curl(_url, TOR_PROXY, random.choice(USER_AGENT_LIST))
+                                        if response:
+                                            try:
+                                                response_json = json.loads(response)
+                                            except json.JSONDecodeError:
+                                                logging.warning("Failed to parse JSON response.")
+                                                response = {}
+                                        else:
+                                            logging.warning("Request failed.")
+                                            response = {}
+                                    else:
+                                        logging.warning(f"Error via HTTP Proxy, status: {response_tor.status} {TOR_PROXY}")
+                                        response = {} 
                         except asyncio.TimeoutError:
                             logging.warning("Request timed out.")
                             response = {} 
@@ -1319,6 +1329,24 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
     except json.JSONDecodeError:
         logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
         return {}
+
+def tor_via_curl(url, tor_proxy, user_agent):
+    curl_cmd = [
+        "curl", "-s", "-x", tor_proxy,  
+        "-A", user_agent,                
+        "--max-time", "30",              
+        url                             
+    ]
+    
+    try:
+        response = subprocess.check_output(curl_cmd, stderr=subprocess.STDOUT)
+        return response.decode('utf-8')  
+    except subprocess.CalledProcessError as e:
+        logging.warning(f"Error with curl request: {e.output.decode()}")
+        return None
+    except Exception as e:
+        logging.warning(f"An unexpected error occurred: {str(e)}")
+        return None
 
 async def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
     buffer = BytesIO()
