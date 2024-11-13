@@ -1192,6 +1192,7 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                                         if response:
                                             try:
                                                 response_json = json.loads(response)
+                                                logging.info("Tor using CURL success")
                                             except json.JSONDecodeError:
                                                 logging.warning("Failed to parse JSON response.")
                                                 response = {}
@@ -1340,6 +1341,7 @@ def tor_via_curl(url, tor_proxy, user_agent):
     
     try:
         response = subprocess.check_output(curl_cmd, stderr=subprocess.STDOUT)
+        logging.info("Tor using CURL: 200 OK")
         return response.decode('utf-8')  
     except subprocess.CalledProcessError as e:
         logging.warning(f"Error with curl request: {e.output.decode()}")
