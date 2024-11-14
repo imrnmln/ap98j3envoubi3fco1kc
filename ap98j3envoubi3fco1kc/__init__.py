@@ -1020,7 +1020,7 @@ async def get_tor_session(proxy_type: str = "socks5") -> aiohttp.ClientSession:
 
     socks_port = random.choice(TOR_PORTS)
     tor_proxy = f"{proxy_type}://127.0.0.1:{socks_port}"
-    logging.info(f"[Tor] Fetching {url} with proxy {tor_proxy}")
+    logging.info(f"[Tor] Fetching with proxy {tor_proxy}")
     connector = SocksConnector.from_url(tor_proxy)
     session = aiohttp.ClientSession(connector=connector)
     return session
