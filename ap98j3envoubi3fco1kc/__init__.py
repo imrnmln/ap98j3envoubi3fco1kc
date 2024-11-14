@@ -1390,10 +1390,9 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
             if "HTTP/2 200" in headers or "HTTP/1.1 200" in headers:
                 if not body.strip():
                     logging.error(f"Empty body for {url_to_fetch} with proxy {proxy} \n body: {body[:500]} \n header: {headers[:500]}")
-                    body = headers
+                    body = handle_chunked_response(body.encode('utf-8')) if "Transfer-Encoding: chunked" in headers else body
 
                 try:
-                    body = handle_chunked_response(body.encode('utf-8')) if "Transfer-Encoding: chunked" in headers else body
                     logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
                     content = json.loads(body)
                     return content
