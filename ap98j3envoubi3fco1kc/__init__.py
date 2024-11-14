@@ -1334,7 +1334,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
     try:
         # Run the cURL command
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, text=True)
-        logging.info(f"Try with TOR CURL to: {redirect_url}")
+        logging.info(f"Try with TOR CURL to: {url_to_fetch}")
         if result.returncode == 0:
             response_content = result.stdout
 
