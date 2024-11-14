@@ -1040,9 +1040,9 @@ async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5") 
                         logging.warning(f"[Tor] Unexpected content type: {content_type}")
                         return {}
                 elif response.status == 429:
-                    if "www.reddit.com" in url:
+                    if "reddit.com" in url:
                         logging.warning(f"[Tor] Rate limit encountered for {url}, retrying with socks5h...")
-                        return await fetch_with_tor(url.replace("www.reddit.com","www.reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent, "socks5h")
+                        return await fetch_with_tor(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent, "socks5h")
                     else:
                         logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
                         return {}
