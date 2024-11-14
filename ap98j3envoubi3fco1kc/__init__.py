@@ -1347,8 +1347,8 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                 body = ""  # No body if separator isn't found
 
             # Check for redirects (301, 302)
-            if "HTTP/2 301" in headers or "HTTP/2 302" in headers:
-                redirect_url = url_to_fetch
+            if "HTTP/2 301" in headers or "HTTP/2 302" in headers or "HTTP/2 429" in headers:
+                redirect_url = None
                 for line in headers.split("\r\n"):
                     # Strip leading/trailing whitespace
                     line = line.strip()
@@ -1369,18 +1369,6 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                         #logging.error(f"Response headers:\n{headers[:500]}")
                         logging.error(f"Redirect onion URL not found in response headers for {url_to_fetch} with proxy {proxy}")
                         return {}
-
-            if "HTTP/2 429" in headers:
-                logging.info(f"Proxy {proxy} rate limited")
-                onion_url = None
-                for line in headers.split("\r\n"):
-                    if line.lower().startswith("onion-location:"):
-                        onion_url = line.split(":")[1].strip()
-                        break
-
-                if onion_url:
-                    logging.info(f"Rate-limited. Try accessing via Tor at: {onion_url}")
-                    return await tor_via_curl(onion_url, proxy, user_agent)
 
             # Only process the body if we have an HTTP 200 status
             if "HTTP/2" in headers or "HTTP/1.1" in headers:
