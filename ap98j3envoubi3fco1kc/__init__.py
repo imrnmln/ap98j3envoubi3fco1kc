@@ -1343,7 +1343,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
         command = [
             "curl", "-L", "-s",  # -i includes headers, -s is silent (no progress bar)
             "-x", proxy,         # Proxy
-            "--max-time", "30",  # Timeout after 30 seconds
+            "--max-time", "15",  # Timeout after 30 seconds
             url_to_fetch         # URL to fetch
         ]
     else:
