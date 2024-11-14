@@ -1355,7 +1355,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     if not line:
                         continue
 
-                    logging.info(f"Header line: {line}")
+                    #logging.info(f"Header line: {line}")
                     line = line.replace("\r\n", " ").strip()
                     redirect_url = None
                     onion_location_match = re.search(r"onion-location:\s*(\S+)", line, re.IGNORECASE)
@@ -1365,11 +1365,12 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                         logging.info(f"Redirecting to Onion Location: {redirect_url}")
                         return await tor_via_curl(redirect_url, proxy, user_agent)
                     else:
-                        logging.error(f"Response headers:\n{headers[:500]}")
-                        logging.error(f"Redirect URL not found in response headers. Try based URL for {url_to_fetch} with proxy {proxy}")
+                        #logging.error(f"Response headers:\n{headers[:500]}")
+                        logging.error(f"Redirect onion URL not found in response headers for {url_to_fetch} with proxy {proxy}")
                         return {}
 
             if "HTTP/2 429" in headers:
+                logging.info(f"Proxy {proxy} rate limited")
                 onion_url = None
                 for line in headers.split("\r\n"):
                     if line.lower().startswith("onion-location:"):
