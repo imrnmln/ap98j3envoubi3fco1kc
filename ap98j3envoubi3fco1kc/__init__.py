@@ -1011,6 +1011,43 @@ async def manage_proxies():
     
 #     return random.choice(proxies)
 
+async def fetch_with_tor_socks5h(url: str, user_agent: str) -> dict:
+    """Fetch the URL using curl with a socks5h proxy (DNS resolution via Tor)."""
+    try:
+        # Choose a random Tor port from the available options
+        socks_port = random.choice(TOR_PORTS)
+        
+        # Create the curl command with the socks5h proxy to use DNS resolution through Tor
+        curl_command = [
+            "curl", url,
+            "--socks5h", f"127.0.0.1:{socks_port}",  # socks5h for DNS resolution over Tor
+            "-A", user_agent,  # Set User-Agent
+            "-s",  # Silent mode (no progress output)
+            "-L",  # Follow redirects
+            "-m", "30",  # Set the timeout for the request
+            "--max-time", "30"  # Set the maximum time for the request
+        ]
+        
+        # Execute the curl command and capture the output
+        result = subprocess.run(curl_command, capture_output=True, text=True)
+
+        # Check if curl ran successfully
+        if result.returncode != 0:
+            logging.error(f"[Tor] curl command failed with exit code {result.returncode}")
+            return {}
+
+        # Attempt to parse the result as JSON
+        try:
+            response_data = json.loads(result.stdout)
+            return response_data
+        except json.JSONDecodeError:
+            logging.error(f"[Tor] Failed to decode JSON from curl output: {result.stdout[:500]}")
+            return {}
+
+    except Exception as e:
+        logging.error(f"[Tor] Error during curl fetch: {e}")
+        return {}
+
 async def get_tor_session(proxy_type: str = "socks5") -> aiohttp.ClientSession:
     """Return a new aiohttp session configured to use Tor with either socks5 or socks5h."""
     
@@ -1041,8 +1078,9 @@ async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5") 
                         return {}
                 elif response.status == 429:
                     if "reddit.com" in url:
-                        logging.warning(f"[Tor] Rate limit encountered for {url}, retrying with socks5h...")
-                        return await fetch_with_tor(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent, "socks5h")
+                        logging.warning(f"[Tor] Rate limit encountered for {url}, retrying with curl socks5h...")
+                        return await fetch_with_tor_socks5h(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent)
+                        # return await fetch_with_tor(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent, "socks5h")
                     else:
                         logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
                         return {}
