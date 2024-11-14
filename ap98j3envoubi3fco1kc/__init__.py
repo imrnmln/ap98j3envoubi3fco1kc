@@ -1334,7 +1334,7 @@ async def tor_via_curl(url, tor_proxy, user_agent):
         result = subprocess.run(curl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)  # Don't use `text=True`, as we decode manually
         if result.returncode == 0:
             logging.info(f"cURL TOR success for {url} with proxy {tor_proxy}")
-            response_content = result.stdout.decode('utf-8')
+            response_content = result.stdout.decode('utf-8').strip()
             if not response_content:
                 logging.error(f"Empty response from cURL for {url} with proxy {tor_proxy}")
                 return None
