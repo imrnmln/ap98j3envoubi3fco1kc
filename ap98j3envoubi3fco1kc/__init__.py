@@ -1331,19 +1331,45 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
         ]
 
     try:
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, text=True)
         if result.returncode == 0:
             logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
-            content = result.stdout.decode('utf-8')
-            return json.loads(content)
+            response_content = result.stdout
+            if "\r\n\r\n" in response_content:
+                headers, body = response_content.split("\r\n\r\n", 1)
+                logging.debug(f"Response headers:\n{headers}")
+            else:
+                headers = None
+                body = response_content
+
+            if headers:
+                content_type = next((line for line in headers.split("\r\n") if line.lower().startswith("content-type")), None)
+                if content_type:
+                    logging.debug(f"Content-Type: {content_type}")
+                else:
+                    logging.debug("No Content-Type header found")
+
+            if not body.strip():
+                logging.error(f"Empty body for {url_to_fetch} with proxy {proxy}")
+                return {}
+
+            try:
+                content = json.loads(body)
+                return content
+            except json.JSONDecodeError:
+                logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
+                logging.debug(f"Response body (non-JSON):\n{body[:500]}")  # Log first 500 characters of the body for inspection
+                return {}
+                
         else:
-            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}")
+            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}. Error: {result.stderr}")
             return {}
+
     except subprocess.TimeoutExpired:
         logging.error(f"cURL timeout expired for {url_to_fetch} with proxy {proxy}")
         return {}
-    except json.JSONDecodeError:
-        logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {str(e)}")
         return {}
 
 async def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
