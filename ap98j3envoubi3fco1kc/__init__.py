@@ -1011,6 +1011,47 @@ async def manage_proxies():
     
 #     return random.choice(proxies)
 
+async def get_tor_session(proxy_type: str = "socks5") -> aiohttp.ClientSession:
+    """Return a new aiohttp session configured to use Tor with either socks5 or socks5h."""
+    
+    # Validate proxy_type
+    if proxy_type not in ["socks5", "socks5h"]:
+        raise ValueError("proxy_type must be either 'socks5' or 'socks5h'")
+
+    socks_port = random.choice(TOR_PORTS)
+    tor_proxy = f"{proxy_type}://127.0.0.1:{socks_port}"
+    connector = SocksConnector.from_url(tor_proxy)
+    session = aiohttp.ClientSession(connector=connector)
+    return session
+
+
+async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5") -> dict:
+    """Fetch the URL through Tor, retrying in case of rate limiting or errors."""
+    try:
+        async with await get_tor_session(proxy_type) as session:
+            logging.info(f"[Tor] Fetching {url} with Tor")
+            async with session.get(url, headers={"User-Agent": user_agent}, timeout=BASE_TIMEOUT) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('Content-Type', '').lower()
+                    if 'application/json' in content_type:
+                        return await response.json()
+                    else:
+                        logging.warning(f"[Tor] Unexpected content type: {content_type}")
+                        return {}
+                elif response.status == 429:
+                    if "https://www.reddit.com/" in url:
+                        logging.warning(f"[Tor] Rate limit encountered for {url}, retrying with socks5h...")
+                        return await fetch_with_tor(url.replace("https://www.reddit.com","https://www.reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent, "socks5h")
+                    else:
+                        logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
+                        return {}
+                else:
+                    logging.warning(f"[Tor] Error fetching {url} with status: {response.status}")
+                    return {}
+    except Exception as e:
+        logging.warning(f"[Tor] Error: {e}")
+        return {}
+
 async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
     """
     Generate a subreddit URL using the search tool with `keyword`.
@@ -1163,42 +1204,7 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                 timeout=BASE_TIMEOUT) as response:
                 if response.status == 429:
                     logging.warning("[Reddit] [COMMENT SECTION] [Try to use TOR]  Scraping - getting Rate limit encountered for %s.", _url)
-                    socks_port = random.choice(TOR_PORTS)
-                    TOR_PROXY = f"socks5://127.0.0.1:{socks_port}"
-                    #TOR_PROXY = f"socks5h://127.0.0.1:{socks_port}"  # Using 'socks5h' to resolve DNS through Tor
-                    connector = SocksConnector.from_url(TOR_PROXY)
-                    #connector = ProxyConnector.from_url(TOR_PROXY)
-                    async with aiohttp.ClientSession(connector=connector) as session:
-                        try:
-                            async with session.get(_url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=aiohttp.ClientTimeout(total=30), allow_redirects=True) as response_tor:
-                                if response_tor.status == 200:
-                                    content_type = response_tor.headers.get('Content-Type', '').lower()
-                                    if 'application/json' in content_type:
-                                        try:
-                                            response = await response_tor.json()
-                                        except Exception as e:
-                                            logging.warning(f"Failed to decode JSON: {e}")
-                                            response = {} 
-                                    elif 'text/html' in content_type:
-                                        logging.warning(f"Received HTML instead of JSON. Response Status: {response_tor.status}")
-                                        html_content = await response_tor.text()
-                                        logging.warning(f"HTML Content: {html_content[:500]}")
-                                        response = {} 
-                                    else:
-                                        logging.warning(f"Unexpected Content-Type: {content_type}")
-                                        response = {} 
-                                else:
-                                    if response_tor.status == 429:
-                                        response = await tor_via_curl(_url, TOR_PROXY, random.choice(USER_AGENT_LIST))
-                                    else:
-                                        logging.warning(f"Error via HTTP Proxy, status: {response_tor.status} {TOR_PROXY}")
-                                        response = {} 
-                        except asyncio.TimeoutError:
-                            logging.warning("Request timed out.")
-                            response = {} 
-                        except Exception as e:
-                            logging.warning(f"An error occurred: {e}")
-                            response = {} 
+                    response = await fetch_with_tor(_url, random.choice(USER_AGENT_LIST), "socks5")
                 else:
                     response = await response.json()
 
@@ -1347,12 +1353,6 @@ def handle_chunked_response(chunked_body):
     conn.endheaders()
     conn.send(chunked_body)
     return conn.getresponse().read()
-
-import subprocess
-import json
-import re
-import logging
-import random
 
 async def tor_via_curl(url_to_fetch, proxy, user_agent):
     # Set up the cURL command
@@ -1835,63 +1835,8 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] [Try to use TOR for Sub Reddit] Rate limit encountered for %s.", url_to_fetch)
-            TOR_PROXY = "socks5://127.0.0.1:9050"
-            socks_port = random.choice(TOR_PORTS)
-            TOR_PROXY = f"socks5://127.0.0.1:{socks_port}"
-            #connector = ProxyConnector.from_url(TOR_PROXY)
-            #TOR_PROXY = f"socks5h://127.0.0.1:{socks_port}"  # Using 'socks5h' to resolve DNS through Tor
-            connector = SocksConnector.from_url(TOR_PROXY)
-            async with aiohttp.ClientSession(connector=connector) as session:
-                try:
-                    async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=aiohttp.ClientTimeout(total=30), allow_redirects=True) as response:
-                        if response.status == 200:
-                            content_type = response.headers.get('Content-Type', '').lower()
-                            if 'application/json' in content_type:
-                                try:
-                                    return await response.json()
-                                except Exception as e:
-                                    logging.warning(f"Failed to decode JSON: {e}")
-                                    return {} 
-                            elif 'text/html' in content_type:
-                                logging.warning(f"Received HTML instead of JSON. Response Status: {response.status}")
-                                html_content = await response.text()
-                                logging.warning(f"HTML Content: {html_content[:500]}")
-                                return {} 
-                            else:
-                                logging.warning(f"Unexpected Content-Type: {content_type}")
-                                return {} 
-                        else:
-                            if response.status == 429:
-                                return await tor_via_curl(url_to_fetch, TOR_PROXY, random.choice(USER_AGENT_LIST))
-                            #     await rotate_tor_circuit(socks_port+1)
-                            logging.warning(f"Error via HTTP Proxy, status: {response.status} {TOR_PROXY}")
-                            return {} 
-                except asyncio.TimeoutError:
-                    logging.warning("Request timed out.")
-                    return {} 
-                except Exception as e:
-                    logging.warning(f"An error occurred: {e}")
-                    return {} 
-            # return await fetch_with_proxy(session, url_to_fetch)
-            # await asyncio.sleep(60)
-            # proxy = await manage_proxies()
-            # if proxy:
-            #     if not "https" in proxy:
-            #         url_to_fetch = url_to_fetch.replace("https", "http")
-            #     logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
-            #     async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
-            #         if proxy_response.status == 200:
-            #             content_type = response.headers.get('Content-Type', '')
-            #             if 'application/json' in content_type:
-            #                 logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-            #                 return await proxy_response.json()
-            #             else:
-            #                 logging.error(f"Unexpected content type: {content_type}, URL: {url}")
-            #                 logging.error(f"Response content: {await response.text()}")
-            #         else:
-            #             logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
-            #             return {}
-            # return {} 
+            return await fetch_with_tor(url_to_fetch, random.choice(USER_AGENT_LIST), "socks5")
+            
         if response.status != 200:
             logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status} for {url_to_fetch}")
             return {}
