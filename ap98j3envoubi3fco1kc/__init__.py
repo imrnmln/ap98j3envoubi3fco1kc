@@ -1341,7 +1341,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
     # Set up the cURL command
     if ".onion" in url_to_fetch:
         command = [
-            "curl", "-L", "-s",  # -i includes headers, -s is silent (no progress bar)
+            "curl", "-i", "-L", "-s",  # -i includes headers, -s is silent (no progress bar)
             "-x", proxy,         # Proxy
             "--max-time", "15",  # Timeout after 30 seconds
             url_to_fetch         # URL to fetch
@@ -1400,7 +1400,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     if body:  # Only handle chunked encoding if the body exists
                         body = handle_chunked_response(body.encode('utf-8'))
                     else:
-                        logging.warning(f"Received chunked response, but the body is empty.")
+                        logging.warning(f"Received chunked response, but the body is empty. {headers[:2000]}")
                         body = None  # Handle empty body case without trying to decode chunked data
                 elif "Content-Length" in headers and "0" in headers.get("Content-Length", ""):
                     logging.info(f"Empty body detected with Content-Length: 0")
