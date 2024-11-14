@@ -1358,7 +1358,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                 return content
             except json.JSONDecodeError:
                 logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
-                logging.error(f"Response body (non-JSON):\n{body[:2000]}")  # Log first 500 characters of the body for inspection
+                #logging.error(f"Response body (non-JSON):\n{body[:2000]}")  # Log first 500 characters of the body for inspection
                 return {}
                 
         else:
