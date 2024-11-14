@@ -1331,10 +1331,10 @@ async def tor_via_curl(url, tor_proxy, user_agent):
             url                 
         ]
         
-        result = subprocess.run(curl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(curl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)  # Don't use `text=True`, as we decode manually
         if result.returncode == 0:
             logging.info(f"cURL TOR success for {url} with proxy {tor_proxy}")
-            response_content = result.stdout.strip()  
+            response_content = result.stdout.decode('utf-8')
             if not response_content:
                 logging.error(f"Empty response from cURL for {url} with proxy {tor_proxy}")
                 return None
@@ -1357,7 +1357,7 @@ async def tor_via_curl(url, tor_proxy, user_agent):
                 logging.error(f"Failed to parse JSON for {url} with proxy {tor_proxy}. Response: {body}")
                 return None
         else:
-            logging.error(f"cURL TOR failed for {url} with proxy {tor_proxy}. Error: {result.stderr}")
+            logging.error(f"cURL TOR failed for {url} with proxy {tor_proxy}. Error: {result.stderr.decode('utf-8')}")
             return None
      except Exception as e:
          logging.error(f"An error occurred while fetching data: {str(e)}")
