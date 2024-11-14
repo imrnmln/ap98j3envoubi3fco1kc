@@ -1420,6 +1420,14 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     return {}
             else:
                 logging.error(f"Unexpected HTTP response code for {url_to_fetch} with proxy {proxy}. Response headers: {headers}")
+                if headers.strip().startswith("{") and headers.strip().endswith("}"):
+                    try:
+                        logging.info("Parsing headers as JSON since they appear to be JSON-like.")
+                        return json.loads(headers)
+                    except json.JSONDecodeError:
+                        logging.error(f"Failed to parse headers as JSON. Returning empty dictionary.")
+                        return {}
+                
                 return {}
 
         else:
