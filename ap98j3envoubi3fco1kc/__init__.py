@@ -1016,19 +1016,29 @@ async def fetch_with_tor_socks5h(url: str, user_agent: str) -> dict:
     try:
         # Choose a random Tor port from the available options
         socks_port = random.choice(TOR_PORTS)
+        tor_proxy = f"socks5h://127.0.0.1:{socks_port}"
         
         # Create the curl command with the socks5h proxy to use DNS resolution through Tor
         curl_command = [
-            "curl", url,
-            "--socks5h", f"127.0.0.1:{socks_port}",  # socks5h for DNS resolution over Tor
+            "curl",
+            "-x", tor_proxy,
             "-A", user_agent,  # Set User-Agent
             "-s",  # Silent mode (no progress output)
             "-L",  # Follow redirects
             "-m", "30",  # Set the timeout for the request
-            "--max-time", "30"  # Set the maximum time for the request
+            "--max-time", "30",  # Set the maximum time for the request
+            url
         ]
+
+        # command = [
+        #     "curl", "-L", "-s",  # -i includes headers, -s is silent (no progress bar)
+        #     "-x", proxy,         # Proxy
+        #     "--max-time", "15",  # Timeout after 30 seconds
+        #     url_to_fetch         # URL to fetch
+        # ]
         
         # Execute the curl command and capture the output
+        logging.warning(f"[Tor] Rate limit encountered for {url}, retrying with curl socks5h {tor_proxy}...")
         result = subprocess.run(curl_command, capture_output=True, text=True)
 
         # Check if curl ran successfully
@@ -1078,7 +1088,6 @@ async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5") 
                         return {}
                 elif response.status == 429:
                     if "reddit.com" in url:
-                        logging.warning(f"[Tor] Rate limit encountered for {url}, retrying with curl socks5h...")
                         return await fetch_with_tor_socks5h(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent)
                         # return await fetch_with_tor(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent, "socks5h")
                     else:
