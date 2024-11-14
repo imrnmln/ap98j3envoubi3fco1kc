@@ -1387,7 +1387,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                         return {}
 
             # Only process the body if we have an HTTP 200 status
-            if "HTTP/2" in headers or "HTTP/1.1" in headers:
+            if "HTTP/2 200" in headers or "HTTP/1.1 200" in headers:
                 if not body.strip():
                     logging.error(f"Empty body for {url_to_fetch} with proxy {proxy} \n body: {body[:500]} \n header: {headers[:500]}")
                     body = headers
