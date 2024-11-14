@@ -1356,7 +1356,10 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                         continue
 
                     logging.info(f"Header line: {line}")
-                    onion_location_match = re.search(r"^onion-location:\s*(\S+)", line, re.IGNORECASE)
+                    line = line.replace("\r\n", " ").strip()
+                    redirect_url = None
+                    onion_location_match = re.search(r"onion-location:\s*(\S+)", line, re.IGNORECASE)
+                    # onion_location_match = re.search(r"^onion-location:\s*(\S+)", line, re.IGNORECASE)
                     if onion_location_match:
                         redirect_url = onion_location_match.group(1).strip()
                         logging.info(f"Redirecting to Onion Location: {redirect_url}")
