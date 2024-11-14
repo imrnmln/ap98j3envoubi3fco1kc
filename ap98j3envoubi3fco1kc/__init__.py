@@ -1339,10 +1339,19 @@ async def tor_via_curl(url, tor_proxy, user_agent):
                 logging.error(f"Empty response from cURL for {url} with proxy {tor_proxy}")
                 return None
 
-            headers, body = response_content.split("\r\n\r\n", 1)  # \r\n\r\n separates headers from body
-            logging.debug(f"Response headers:\n{headers}")
+            if "\r\n\r\n" in response_content:
+                headers, body = response_content.split("\r\n\r\n", 1)
+                logging.debug(f"Response headers:\n{headers}")
+            else:
+                headers = None
+                body = response_content
+
+            if not body.strip():
+                logging.info(f"No body content in the response for {url} with proxy {tor_proxy}")
+                return None  
+
             try:
-                content = json.loads(body)
+                content = json.loads(body) if body else {}
                 return content
             except json.JSONDecodeError:
                 logging.error(f"Failed to parse JSON for {url} with proxy {tor_proxy}. Response: {body}")
