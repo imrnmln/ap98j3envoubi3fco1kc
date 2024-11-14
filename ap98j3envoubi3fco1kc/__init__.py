@@ -1322,6 +1322,82 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         return {}
 
 async def tor_via_curl(url_to_fetch, proxy, user_agent):
+    # Set up the cURL command
+    command = [
+        "curl", "-i", "-s",  # -i includes headers, -s is silent (no progress bar)
+        "-x", proxy,         # Proxy
+        "-A", user_agent,    # User-Agent
+        "--max-time", "30",  # Timeout after 30 seconds
+        url_to_fetch         # URL to fetch
+    ]
+
+    try:
+        # Run the cURL command
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, text=True)
+
+        # Check if the cURL command was successful
+        if result.returncode == 0:
+            logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
+            
+            # Full response from cURL (headers + body)
+            response_content = result.stdout
+            
+            # Split the response into headers and body
+            if "\r\n\r\n" in response_content:
+                headers, body = response_content.split("\r\n\r\n", 1)
+                logging.debug(f"Response headers:\n{headers}")
+            else:
+                headers = None
+                body = response_content
+
+            # Check for redirect (301 or 302)
+            if "HTTP/2 301" in headers or "HTTP/2 302" in headers:
+                # Extract the redirect URL from the Location header
+                redirect_url = None
+                for line in headers.split("\r\n"):
+                    if line.lower().startswith("location:"):
+                        redirect_url = line.split(":")[1].strip()
+                        break
+                
+                if redirect_url:
+                    logging.info(f"Redirecting to: {redirect_url}")
+                    # Recursively call the function to follow the redirect
+                    return await tor_via_curl(redirect_url, proxy, user_agent)
+                else:
+                    logging.error(f"Redirect URL not found in response headers for {url_to_fetch} with proxy {proxy}")
+                    return {}
+
+            # If it's an HTTP 200 response, attempt to parse the JSON
+            if "HTTP/2 200" in headers:
+                if not body.strip():
+                    logging.error(f"Empty body for {url_to_fetch} with proxy {proxy}")
+                    return {}
+
+                # Try to parse the body as JSON
+                try:
+                    content = json.loads(body)
+                    return content
+                except json.JSONDecodeError:
+                    logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
+                    logging.debug(f"Response body (non-JSON):\n{body[:500]}")  # Log part of the body for debugging
+                    return {}
+            else:
+                logging.error(f"Unexpected HTTP response code for {url_to_fetch} with proxy {proxy}. Response headers: {headers}")
+                return {}
+
+        else:
+            # If the cURL command failed, log the error and return empty dict
+            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}. Error: {result.stderr}")
+            return {}
+
+    except subprocess.TimeoutExpired:
+        logging.error(f"cURL timeout expired for {url_to_fetch} with proxy {proxy}")
+        return {}
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {str(e)}")
+        return {}
+
+async def tor_via_curl1(url_to_fetch, proxy, user_agent):
     command = [
             "curl", "-i", "-L", "-s", 
             "-x", proxy,    
