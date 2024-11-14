@@ -1322,38 +1322,37 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         return {}
 
 async def tor_via_curl(url, tor_proxy, user_agent):
-    curl_cmd = [
-        "curl", "-s", "-x", tor_proxy,  
-        "-A", user_agent,                
-        "--max-time", "30",              
-        url                             
-    ]
-    
-    try:
-        result = subprocess.run(curl_cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+     try:
+        curl_cmd = [
+            "curl", "-i", "-L", "-s", 
+            "-x", tor_proxy,    
+            "-A", user_agent,   
+            "--max-time", "30", 
+            url                 
+        ]
+        
+        result = subprocess.run(curl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if result.returncode == 0:
             logging.info(f"cURL TOR success for {url} with proxy {tor_proxy}")
-            response_content = result.stdout.strip()
+            response_content = result.stdout.strip()  
             if not response_content:
                 logging.error(f"Empty response from cURL for {url} with proxy {tor_proxy}")
                 return None
 
+            headers, body = response_content.split("\r\n\r\n", 1)  # \r\n\r\n separates headers from body
+            logging.debug(f"Response headers:\n{headers}")
             try:
-                content = json.loads(response_content)
+                content = json.loads(body)
                 return content
             except json.JSONDecodeError:
-                logging.error(f"Failed to parse JSON for {url} with proxy {tor_proxy}. Response: {response_content}")
+                logging.error(f"Failed to parse JSON for {url} with proxy {tor_proxy}. Response: {body}")
                 return None
         else:
             logging.error(f"cURL TOR failed for {url} with proxy {tor_proxy}. Error: {result.stderr}")
             return None
-        # logging.info("Tor using CURL: 200 OK")
-        # return response.decode('utf-8')  
-    except subprocess.CalledProcessError as e:
-        logging.warning(f"Error with curl request: {e.output.decode()}")
-        return None
+
     except Exception as e:
-        logging.warning(f"An unexpected error occurred: {str(e)}")
+        logging.error(f"An error occurred while fetching data: {str(e)}")
         return None
 
 async def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
