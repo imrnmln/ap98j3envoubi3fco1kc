@@ -1383,7 +1383,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     return await tor_via_curl(onion_url, proxy, user_agent)
 
             # Only process the body if we have an HTTP 200 status
-            if "HTTP/2 200" in headers:
+            if "HTTP/2" in headers or "HTTP/1.1" in headers:
                 if not body.strip():
                     logging.error(f"Empty body for {url_to_fetch} with proxy {proxy}")
                     return {}
