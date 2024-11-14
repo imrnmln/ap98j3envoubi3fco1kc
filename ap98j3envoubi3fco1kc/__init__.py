@@ -872,7 +872,7 @@ async def test_proxy_curl(proxy, test_url):
 
 async def test_proxy_pycurl(proxy, test_url):
     logging.warning(f"Try proxy using pycurl: {proxy}")
-    buffer = BytesIO()
+    buffer = ()
     c = pycurl.Curl()
     
     try:
@@ -1321,6 +1321,22 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
         return {}
 
+def handle_chunked_response(response_body):
+    """
+    Handles chunked responses by decoding the chunked transfer encoding.
+    """
+    if response_body:
+        try:
+            if response_body.startswith(b'\x1f\x8b'):
+                with gzip.GzipFile(fileobj=BytesIO(response_body)) as f:
+                    return f.read().decode('utf-8')
+            else:
+                return response_body.decode('utf-8')
+        except Exception as e:
+            logging.error(f"Error decoding chunked response: {str(e)}")
+            return None
+    return None
+
 async def tor_via_curl(url_to_fetch, proxy, user_agent):
     # Set up the cURL command
     command = [
@@ -1377,6 +1393,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     body = headers
 
                 try:
+                    body = handle_chunked_response(body.encode('utf-8')) if "Transfer-Encoding: chunked" in headers else body
                     logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
                     content = json.loads(body)
                     return content
@@ -1452,7 +1469,7 @@ async def tor_via_curl1(url_to_fetch, proxy, user_agent):
         return {}
 
 async def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
-    buffer = BytesIO()
+    buffer = ()
     c = pycurl.Curl()
     try:
         c.setopt(c.URL, url_to_fetch)
