@@ -1334,7 +1334,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
     try:
         # Run the cURL command
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, text=True)
-        
+        logging.info(f"Try with TOR CURL to: {redirect_url}")
         if result.returncode == 0:
             response_content = result.stdout
 
@@ -1359,6 +1359,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     logging.info(f"Redirecting to: {redirect_url}")
                     return await tor_via_curl(redirect_url, proxy, user_agent)
                 else:
+                    logging.error(f"Response headers:\n{headers[:500]}")
                     logging.error(f"Redirect URL not found in response headers for {url_to_fetch} with proxy {proxy}")
                     return {}
 
@@ -1374,7 +1375,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     return content
                 except json.JSONDecodeError:
                     logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
-                    logging.debug(f"Response body (non-JSON):\n{body[:500]}")  # Log part of the body for debugging
+                    logging.error(f"Response body (non-JSON):\n{body[:500]}")  # Log part of the body for debugging
                     return {}
             else:
                 logging.error(f"Unexpected HTTP response code for {url_to_fetch} with proxy {proxy}. Response headers: {headers}")
