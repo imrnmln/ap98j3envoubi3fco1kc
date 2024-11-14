@@ -1419,7 +1419,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     logging.error(f"Response body (non-JSON):\n{body[:2000]}")  # Log part of the body for debugging
                     return {}
             else:
-                logging.error(f"Unexpected HTTP response code for {url_to_fetch} with proxy {proxy}. Response headers: {headers[:500]}")
+                logging.error(f"Unexpected HTTP response code for {url_to_fetch} with proxy {proxy}. Response headers: {headers[:100]}")
                 if headers.strip().startswith("{") and headers.strip().endswith("}"):
                     try:
                         logging.info("Parsing headers as JSON since they appear to be JSON-like.")
