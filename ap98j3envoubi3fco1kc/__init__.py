@@ -1046,6 +1046,13 @@ async def fetch_with_tor_socks5h(url: str, user_agent: str) -> dict:
             logging.error(f"[Tor] curl command failed with exit code {result.returncode}")
             return {}
 
+        if '<html>' in result.stdout.lower():
+            if 'too many requests' in result.stdout.lower():
+                logging.warning(f"[Tor] Rate limiting detected (HTTP 429). URL: {url} with curl socks5h {tor_proxy}")
+            else:
+                logging.warning(f"[Tor] Unexpected HTML response received: {result.stdout[:500]}")
+            return {}
+
         # Attempt to parse the result as JSON
         try:
             response_data = json.loads(result.stdout)
