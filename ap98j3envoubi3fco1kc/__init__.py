@@ -1339,13 +1339,21 @@ def handle_chunked_response(response_body):
 
 async def tor_via_curl(url_to_fetch, proxy, user_agent):
     # Set up the cURL command
-    command = [
-        "curl", "-i", "-s",  # -i includes headers, -s is silent (no progress bar)
-        "-x", proxy,         # Proxy
-        "-A", user_agent,    # User-Agent
-        "--max-time", "30",  # Timeout after 30 seconds
-        url_to_fetch         # URL to fetch
-    ]
+    if ".onion" in url_to_fetch:
+        command = [
+            "curl", "-L", "-s",  # -i includes headers, -s is silent (no progress bar)
+            "-x", proxy,         # Proxy
+            "--max-time", "30",  # Timeout after 30 seconds
+            url_to_fetch         # URL to fetch
+        ]
+    else:
+        command = [
+            "curl", "-i", "-s",  # -i includes headers, -s is silent (no progress bar)
+            "-x", proxy,         # Proxy
+            "-A", user_agent,    # User-Agent
+            "--max-time", "30",  # Timeout after 30 seconds
+            url_to_fetch         # URL to fetch
+        ]
 
     try:
         # Run the cURL command
