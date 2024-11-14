@@ -1388,9 +1388,12 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
 
             # Only process the body if we have an HTTP 200 status
             if "HTTP/2 200" in headers or "HTTP/1.1 200" in headers:
+                if "Transfer-Encoding: chunked" in headers:
+                    body = handle_chunked_response(body.encode('utf-8')) if body else None
+
                 if not body.strip():
-                    logging.error(f"Empty body for {url_to_fetch} with proxy {proxy} \n body: {body[:500]} \n header: {headers[:500]}")
-                    body = handle_chunked_response(body.encode('utf-8')) if "Transfer-Encoding: chunked" in headers else body
+                    logging.error(f"Empty body for {url_to_fetch} with proxy {proxy} \n body: {body[:2000]} \n header: {headers[:2000]}")
+                    return {}
 
                 try:
                     logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
@@ -1398,7 +1401,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     return content
                 except json.JSONDecodeError:
                     logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
-                    logging.error(f"Response body (non-JSON):\n{body[:500]}")  # Log part of the body for debugging
+                    logging.error(f"Response body (non-JSON):\n{body[:2000]}")  # Log part of the body for debugging
                     return {}
             else:
                 logging.error(f"Unexpected HTTP response code for {url_to_fetch} with proxy {proxy}. Response headers: {headers}")
