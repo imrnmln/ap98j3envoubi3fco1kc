@@ -1025,8 +1025,8 @@ async def fetch_with_tor_socks5h(url: str, user_agent: str) -> dict:
             "-A", user_agent,  # Set User-Agent
             "-s",  # Silent mode (no progress output)
             "-L",  # Follow redirects
-            "-m", "30",  # Set the timeout for the request
-            "--max-time", "30",  # Set the maximum time for the request
+            "-m", "10",  # Set the timeout for the request
+            "--max-time", "10",  # Set the maximum time for the request
             url
         ]
 
