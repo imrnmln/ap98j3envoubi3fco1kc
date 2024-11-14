@@ -1188,17 +1188,7 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                                         response = {} 
                                 else:
                                     if response_tor.status == 429:
-                                        response = tor_via_curl(_url, TOR_PROXY, random.choice(USER_AGENT_LIST))
-                                        if response:
-                                            try:
-                                                response_json = json.loads(response)
-                                                logging.info("Tor using CURL success")
-                                            except json.JSONDecodeError:
-                                                logging.warning("Failed to parse JSON response.")
-                                                response = {}
-                                        else:
-                                            logging.warning("Request failed.")
-                                            response = {}
+                                        response = await tor_via_curl(_url, TOR_PROXY, random.choice(USER_AGENT_LIST))
                                     else:
                                         logging.warning(f"Error via HTTP Proxy, status: {response_tor.status} {TOR_PROXY}")
                                         response = {} 
@@ -1331,7 +1321,7 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
         return {}
 
-def tor_via_curl(url, tor_proxy, user_agent):
+async def tor_via_curl(url, tor_proxy, user_agent):
     curl_cmd = [
         "curl", "-s", "-x", tor_proxy,  
         "-A", user_agent,                
@@ -1341,8 +1331,15 @@ def tor_via_curl(url, tor_proxy, user_agent):
     
     try:
         response = subprocess.check_output(curl_cmd, stderr=subprocess.STDOUT)
-        logging.info("Tor using CURL: 200 OK")
-        return response.decode('utf-8')  
+        if response.returncode == 0:
+            logging.info(f"cURL TOR success for {url} with proxy {tor_proxy}")
+            content = response.stdout.decode('utf-8')
+            return json.loads(content)
+        else:
+            logging.error(f"cURL TOR failed for {url} with proxy {tor_proxy}")
+            return None
+        # logging.info("Tor using CURL: 200 OK")
+        # return response.decode('utf-8')  
     except subprocess.CalledProcessError as e:
         logging.warning(f"Error with curl request: {e.output.decode()}")
         return None
@@ -1565,7 +1562,8 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
                                 logging.warning(f"Unexpected Content-Type: {content_type}")
                                 return {} 
                         else:
-                            # if response.status == 429:
+                            if response.status == 429:
+                                return await tor_via_curl(url_to_fetch, TOR_PROXY, random.choice(USER_AGENT_LIST))
                             #     await rotate_tor_circuit(socks_port+1)
                             logging.warning(f"Error via HTTP Proxy, status: {response.status} {TOR_PROXY}")
                             return {} 
