@@ -1330,13 +1330,13 @@ async def tor_via_curl(url, tor_proxy, user_agent):
     ]
     
     try:
-        response = subprocess.check_output(curl_cmd, stderr=subprocess.STDOUT)
-        if response.returncode == 0:
+        result = subprocess.run(curl_cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        if result.returncode == 0:
             logging.info(f"cURL TOR success for {url} with proxy {tor_proxy}")
-            content = response.stdout.decode('utf-8')
+            content = result.stdout
             return json.loads(content)
         else:
-            logging.error(f"cURL TOR failed for {url} with proxy {tor_proxy}")
+            logging.error(f"cURL TOR failed for {url} with proxy {tor_proxy}. Error: {result.stderr}")
             return None
         # logging.info("Tor using CURL: 200 OK")
         # return response.decode('utf-8')  
