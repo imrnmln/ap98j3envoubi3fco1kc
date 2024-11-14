@@ -1333,7 +1333,6 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
     try:
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, text=True)
         if result.returncode == 0:
-            logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
             response_content = result.stdout
             if "\r\n\r\n" in response_content:
                 headers, body = response_content.split("\r\n\r\n", 1)
@@ -1355,6 +1354,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
 
             try:
                 content = json.loads(body)
+                logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
                 return content
             except json.JSONDecodeError:
                 logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
