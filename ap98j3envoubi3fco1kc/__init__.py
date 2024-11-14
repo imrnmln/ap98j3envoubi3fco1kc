@@ -1334,26 +1334,22 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
     try:
         # Run the cURL command
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, text=True)
-
-        # Check if the cURL command was successful
+        
         if result.returncode == 0:
-            logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
-            
-            # Full response from cURL (headers + body)
             response_content = result.stdout
-            
-            # Split the response into headers and body
+
+            # Split the headers and body using the "\r\n\r\n" separator
             if "\r\n\r\n" in response_content:
                 headers, body = response_content.split("\r\n\r\n", 1)
                 logging.debug(f"Response headers:\n{headers}")
             else:
-                headers = None
-                body = response_content
+                headers = response_content  # If no separator, treat the entire content as headers
+                body = ""  # No body if separator isn't found
 
-            # Check for redirect (301 or 302)
+            # Check for redirects (301, 302)
             if "HTTP/2 301" in headers or "HTTP/2 302" in headers:
-                # Extract the redirect URL from the Location header
                 redirect_url = None
+                # Extract the Location header to find where to redirect
                 for line in headers.split("\r\n"):
                     if line.lower().startswith("location:"):
                         redirect_url = line.split(":")[1].strip()
@@ -1361,20 +1357,19 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                 
                 if redirect_url:
                     logging.info(f"Redirecting to: {redirect_url}")
-                    # Recursively call the function to follow the redirect
                     return await tor_via_curl(redirect_url, proxy, user_agent)
                 else:
                     logging.error(f"Redirect URL not found in response headers for {url_to_fetch} with proxy {proxy}")
                     return {}
 
-            # If it's an HTTP 200 response, attempt to parse the JSON
+            # Only process the body if we have an HTTP 200 status
             if "HTTP/2 200" in headers:
                 if not body.strip():
                     logging.error(f"Empty body for {url_to_fetch} with proxy {proxy}")
                     return {}
 
-                # Try to parse the body as JSON
                 try:
+                    logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
                     content = json.loads(body)
                     return content
                 except json.JSONDecodeError:
