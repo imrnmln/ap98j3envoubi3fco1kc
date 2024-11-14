@@ -24,6 +24,7 @@ from datetime import timezone
 import pytz
 import hashlib
 import logging
+import http.client
 from lxml.html import fromstring
 from bs4 import BeautifulSoup
 import re
@@ -1321,21 +1322,31 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
         return {}
 
-def handle_chunked_response(response_body):
-    """
-    Handles chunked responses by decoding the chunked transfer encoding.
-    """
-    if response_body:
-        try:
-            if response_body.startswith(b'\x1f\x8b'):
-                with gzip.GzipFile(fileobj=BytesIO(response_body)) as f:
-                    return f.read().decode('utf-8')
-            else:
-                return response_body.decode('utf-8')
-        except Exception as e:
-            logging.error(f"Error decoding chunked response: {str(e)}")
-            return None
-    return None
+# def handle_chunked_response(response_body):
+#     """
+#     Handles chunked responses by decoding the chunked transfer encoding.
+#     """
+#     if response_body:
+#         try:
+#             if response_body.startswith(b'\x1f\x8b'):
+#                 with gzip.GzipFile(fileobj=BytesIO(response_body)) as f:
+#                     return f.read().decode('utf-8')
+#             else:
+#                 return response_body.decode('utf-8')
+#         except Exception as e:
+#             logging.error(f"Error decoding chunked response: {str(e)}")
+#             return None
+#     return None
+
+def handle_chunked_response(chunked_body):
+    # This will handle chunked transfer encoding and return the decoded body.
+    # It uses Python's standard library to decode the chunked response.
+    conn = http.client.HTTPConnection("localhost", 80)
+    conn.putrequest("POST", "/")
+    conn.putheader("Content-Length", str(len(chunked_body)))
+    conn.endheaders()
+    conn.send(chunked_body)
+    return conn.getresponse().read()
 
 async def tor_via_curl(url_to_fetch, proxy, user_agent):
     # Set up the cURL command
