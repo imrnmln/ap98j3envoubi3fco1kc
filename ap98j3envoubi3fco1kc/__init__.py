@@ -1015,6 +1015,9 @@ async def fetch_with_tor_socks5h(url: str, user_agent: str) -> dict:
     """Fetch the URL using curl with a socks5h proxy (DNS resolution via Tor)."""
     try:
         # Choose a random Tor port from the available options
+        if not "www." in url:
+            url = url.replace("reddittor", "www.reddittor")
+            
         socks_port = random.choice(TOR_PORTS)
         tor_proxy = f"socks5h://127.0.0.1:{socks_port}"
         
@@ -1025,8 +1028,8 @@ async def fetch_with_tor_socks5h(url: str, user_agent: str) -> dict:
             "-A", user_agent,  # Set User-Agent
             "-s",  # Silent mode (no progress output)
             "-L",  # Follow redirects
-            "-m", "10",  # Set the timeout for the request
-            "--max-time", "10",  # Set the maximum time for the request
+            "-m", "5",  # Set the timeout for the request
+            "--max-time", "5",  # Set the maximum time for the request
             url
         ]
 
