@@ -1331,43 +1331,15 @@ async def tor_via_curl(url, tor_proxy, user_agent):
             url                 
         ]
         
-        result = subprocess.run(curl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
+        #result = subprocess.run(curl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
+        result = subprocess.run(curl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
         if result.returncode == 0:
-            logging.info(f"cURL TOR success for {url} with proxy {tor_proxy}")
-            
-            # Decode the result.stdout (byte object) into a UTF-8 string
-            response_content = result.stdout.decode('utf-8')
-
-            # If the response is empty, log the error and return None
-            if not response_content:
-                logging.error(f"Empty response from cURL for {url} with proxy {tor_proxy}")
-                return None
-
-            # Try to split headers and body using the \r\n\r\n separator
-            if "\r\n\r\n" in response_content:
-                headers, body = response_content.split("\r\n\r\n", 1)
-                logging.debug(f"Response headers:\n{headers}")
-            else:
-                # If there's no separator, treat the entire response as the body and set headers as None
-                headers = None
-                body = response_content  # Treat the entire content as the body
-
-            # Check if body is empty or not valid
-            if not body.strip():
-                logging.info(f"No body content in the response for {url} with proxy {tor_proxy}")
-                return None  # No content to parse as JSON
-
-            # Try to parse the body as JSON
-            try:
-                content = json.loads(body) if body else {}
-                return content
-            except json.JSONDecodeError as e:
-                logging.error(f"Failed to parse JSON for {url} with proxy {tor_proxy}. Response: {body}")
-                logging.exception(e)  # Log the exception for further details
-                return None
+            logging.info(f"cURL success for {url} with proxy {tor_proxy}")
+            content = result.stdout.decode('utf-8')
+            return json.loads(content)
         else:
-            logging.error(f"cURL TOR failed for {url} with proxy {tor_proxy}. Error: {result.stderr.decode('utf-8')}")
-            return None
+            logging.error(f"cURL failed for {url} with proxy {tor_proxy}")
+            return {}
      except Exception as e:
          logging.error(f"An error occurred while fetching data: {str(e)}")
          return None
