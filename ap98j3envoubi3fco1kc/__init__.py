@@ -1421,14 +1421,14 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                         if 'application/json' in content_type:
                             try:
                                 logging.info("Parsing response as JSON")
-                                response = json.loads(headers)
+                                return json.loads(headers)
                             except json.JSONDecodeError as e:
                                 logging.warning(f"Failed to decode JSON: {e}")
-                                response = {}
+                                return {}
                         elif 'text/html' in content_type:
                             logging.warning(f"Received HTML instead of JSON. Response Headers: {headers[:500]}")
                             logging.warning(f"HTML Content: {body[:500]}")
-                            response = {}
+                            return {}
                 elif "Content-Length" in headers and "0" in headers.get("Content-Length", ""):
                     logging.info(f"Empty body detected with Content-Length: 0")
                     body = None  # Explicitly handle empty body if Content-Length is 0
