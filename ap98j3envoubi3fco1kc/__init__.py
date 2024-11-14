@@ -1363,6 +1363,17 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     logging.error(f"Redirect URL not found in response headers for {url_to_fetch} with proxy {proxy}")
                     return {}
 
+            if "HTTP/2 429" in headers:
+                onion_url = None
+                for line in headers.split("\r\n"):
+                    if line.lower().startswith("onion-location:"):
+                        onion_url = line.split(":")[1].strip()
+                        break
+
+                if onion_url:
+                    logging.info(f"Rate-limited. Try accessing via Tor at: {onion_url}")
+                    return await tor_via_curl(onion_url, proxy, user_agent)
+
             # Only process the body if we have an HTTP 200 status
             if "HTTP/2 200" in headers:
                 if not body.strip():
