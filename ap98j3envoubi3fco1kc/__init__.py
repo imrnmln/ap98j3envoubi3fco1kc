@@ -1349,15 +1349,22 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
             # Check for redirects (301, 302)
             if "HTTP/2 301" in headers or "HTTP/2 302" in headers:
                 redirect_url = url_to_fetch
-                onion_location_match = re.search(r"^onion-location:\s*(\S+)", headers, re.IGNORECASE)
-                if onion_location_match:
-                    redirect_url = onion_location_match.group(1).strip()
-                    logging.info(f"Redirecting to Onion Location: {redirect_url}")
-                    return await tor_via_curl(redirect_url, proxy, user_agent)
-                else:
-                    logging.error(f"Response headers:\n{headers[:500]}")
-                    logging.error(f"Redirect URL not found in response headers. Try based URL for {url_to_fetch} with proxy {proxy}")
-                    return await tor_via_curl(redirect_url, proxy, user_agent)
+                for line in headers.split("\r\n"):
+                    # Strip leading/trailing whitespace
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    logging.info(f"Header line: {line}")
+                    onion_location_match = re.search(r"^onion-location:\s*(\S+)", line, re.IGNORECASE)
+                    if onion_location_match:
+                        redirect_url = onion_location_match.group(1).strip()
+                        logging.info(f"Redirecting to Onion Location: {redirect_url}")
+                        return await tor_via_curl(redirect_url, proxy, user_agent)
+                    else:
+                        logging.error(f"Response headers:\n{headers[:500]}")
+                        logging.error(f"Redirect URL not found in response headers. Try based URL for {url_to_fetch} with proxy {proxy}")
+                        return {}
 
             if "HTTP/2 429" in headers:
                 onion_url = None
