@@ -443,7 +443,7 @@ subreddits_top_1000 = [
 tor_lock = asyncio.Lock()
 # A flag to track whether the Tor circuit rotation is already in progress
 circuit_rotation_in_progress = False
-TOR_PORTS = [9050, 9052, 9054, 9056, 9058, 9060, 9062, 9064, 9066, 9068, 9070, 9072, 9074, 9076, 9078, 9080, 9082, 9084, 9086, 9088]
+TOR_PORTS = [9050, 9052, 9054, 9056, 9058, 9060, 9062, 9064, 9066, 9068, 9070, 9072, 9074, 9076, 9078, 9080, 9082, 9084, 9086, 9088, 9090, 9092, 9094, 9096, 9098, 9100, 9102, 9104, 9106, 9108]
 
 
 async def generate_random_string():
@@ -1097,12 +1097,14 @@ async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5") 
                         logging.warning(f"[Tor] Unexpected content type: {content_type}")
                         return {}
                 elif response.status == 429:
-                    if "reddit.com" in url:
-                        return await fetch_with_tor_socks5h(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent)
-                        # return await fetch_with_tor(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent, "socks5h")
-                    else:
-                        logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
-                        return {}
+                    logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
+                    return {}
+                    # if "reddit.com" in url:
+                    #     return await fetch_with_tor_socks5h(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent)
+                    #     # return await fetch_with_tor(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent, "socks5h")
+                    # else:
+                    #     logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
+                    #     return {}
                 else:
                     logging.warning(f"[Tor] Error fetching {url} with status: {response.status}")
                     return {}
