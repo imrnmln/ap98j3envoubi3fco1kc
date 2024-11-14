@@ -1389,7 +1389,14 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
             # Only process the body if we have an HTTP 200 status
             if "HTTP/2 200" in headers or "HTTP/1.1 200" in headers:
                 if "Transfer-Encoding: chunked" in headers:
-                    body = handle_chunked_response(body.encode('utf-8')) if body else None
+                    if body:  # Only handle chunked encoding if the body exists
+                        body = handle_chunked_response(body.encode('utf-8'))
+                    else:
+                        logging.warning(f"Received chunked response, but the body is empty.")
+                        body = None  # Handle empty body case without trying to decode chunked data
+                elif "Content-Length" in headers and "0" in headers.get("Content-Length", ""):
+                    logging.info(f"Empty body detected with Content-Length: 0")
+                    body = None  # Explicitly handle empty body if Content-Length is 0
 
                 if not body.strip():
                     logging.error(f"Empty body for {url_to_fetch} with proxy {proxy} \n body: {body[:2000]} \n header: {headers[:2000]}")
