@@ -1348,7 +1348,133 @@ def handle_chunked_response(chunked_body):
     conn.send(chunked_body)
     return conn.getresponse().read()
 
+import subprocess
+import json
+import re
+import logging
+import random
+
 async def tor_via_curl(url_to_fetch, proxy, user_agent):
+    # Set up the cURL command
+    if ".onion" in url_to_fetch:
+        command = [
+            "curl", "-L", "-s",  # -i includes headers, -s is silent (no progress bar)
+            "-x", proxy,         # Proxy
+            "--max-time", "15",  # Timeout after 30 seconds
+            url_to_fetch         # URL to fetch
+        ]
+    else:
+        command = [
+            "curl", "-i", "-s",  # -i includes headers, -s is silent (no progress bar)
+            "-x", proxy,         # Proxy
+            "-A", user_agent,    # User-Agent
+            "--max-time", "30",  # Timeout after 30 seconds
+            url_to_fetch         # URL to fetch
+        ]
+
+    try:
+        # Run the cURL command
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, text=True)
+        logging.info(f"Try with TOR CURL to: {url_to_fetch}")
+        if result.returncode == 0:
+            response_content = result.stdout
+
+            # Split the headers and body using the "\r\n\r\n" separator
+            if "\r\n\r\n" in response_content:
+                headers, body = response_content.split("\r\n\r\n", 1)
+                logging.debug(f"Response headers:\n{headers}")
+            else:
+                headers = response_content  # If no separator, treat the entire content as headers
+                body = ""  # No body if separator isn't found
+
+            # Check for redirects (301, 302, 429)
+            if "HTTP/2 301" in headers or "HTTP/2 302" in headers or "HTTP/2 429" in headers:
+                redirect_url = None
+                for line in headers.split("\r\n"):
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    line = line.replace("\r\n", " ").strip()
+                    redirect_url = None
+                    onion_location_match = re.search(r"onion-location:\s*(\S+)", line, re.IGNORECASE)
+                    if onion_location_match:
+                        redirect_url = onion_location_match.group(1).strip()
+                        proxy = proxy.replace("socks5://", "socks5h://")
+                        logging.info(f"Redirecting to Onion Location: {redirect_url} with proxy {proxy}")
+                        return await tor_via_curl(redirect_url, proxy, user_agent)
+                    else:
+                        logging.error(f"Redirect onion URL not found in response headers for {url_to_fetch} with proxy {proxy}")
+                        return {}
+
+            # Only process the body if we have an HTTP 200 status
+            if "HTTP/2 200" in headers or "HTTP/1.1 200" in headers:
+                content_type = ""
+                for line in headers.split("\r\n"):
+                    if "Content-Type" in line:
+                        content_type = line.split(":", 1)[1].strip().lower()
+                        break
+
+                if "Transfer-Encoding: chunked" in headers:
+                    if body:  # Only handle chunked encoding if the body exists
+                        body = handle_chunked_response(body.encode('utf-8'))
+                    else:
+                        logging.warning(f"Received chunked response, but the body is empty. {headers[:2000]}")
+                        return {}
+
+                elif "Content-Length" in headers and "0" in headers.get("Content-Length", ""):
+                    logging.info(f"Empty body detected with Content-Length: 0")
+                    body = None  # Explicitly handle empty body if Content-Length is 0
+
+                # Process based on content type
+                if 'application/json' in content_type:
+                    if not body.strip():
+                        logging.error(f"Empty body for {url_to_fetch} with proxy {proxy}")
+                        return {}
+
+                    try:
+                        logging.info("Parsing response as JSON")
+                        response_data = json.loads(body)
+                        return response_data
+                    except json.JSONDecodeError as e:
+                        logging.warning(f"Failed to decode JSON: {e}")
+                        return {}
+
+                elif 'text/html' in content_type:
+                    logging.warning(f"Received HTML instead of JSON. Response Headers: {headers[:500]}")
+                    logging.warning(f"HTML Content: {body[:500]}")
+                    return {}
+
+                else:
+                    logging.warning(f"Unexpected Content-Type: {content_type}")
+                    return {}
+
+            else:
+                logging.error(f"Unexpected HTTP response code for {url_to_fetch} with proxy {proxy}. Response headers: {headers[:100]}")
+                if headers.strip().startswith("{") and headers.strip().endswith("}"):
+                    try:
+                        logging.info("Parsing headers as JSON since they appear to be JSON-like.")
+                        return json.loads(headers)
+                    except json.JSONDecodeError:
+                        logging.error(f"Failed to parse headers as JSON. Returning empty dictionary.")
+                        return {}
+
+                return {}
+
+        else:
+            # If the cURL command failed, log the error and return empty dict
+            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}. Error: {result.stderr}")
+            return {}
+
+    except subprocess.TimeoutExpired:
+        logging.error(f"cURL timeout expired for {url_to_fetch} with proxy {proxy}")
+        return {}
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {str(e)}")
+        return {}
+
+
+async def tor_via_curl2(url_to_fetch, proxy, user_agent):
     # Set up the cURL command
     if ".onion" in url_to_fetch:
         command = [
