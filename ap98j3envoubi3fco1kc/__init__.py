@@ -1357,12 +1357,12 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
             
                     logging.info(f"Header line: {line}")  # Log each non-empty line
                     # Check both 'location' and 'onion-location' headers in a case-insensitive way
-                    if line.lower().startswith("location:"):
+                    if line.lower().startswith("onion-location:"):
                         redirect_url = line.split(":", 1)[1].strip()
                         break
-                    elif line.lower().startswith("onion-location:"):
-                        redirect_url = line.split(":", 1)[1].strip()
-                        break
+                    # elif line.lower().startswith("onion-location:"):
+                    #     redirect_url = line.split(":", 1)[1].strip()
+                    #     break
                 
                 if redirect_url:
                     logging.info(f"Redirecting to: {redirect_url}")
