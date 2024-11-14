@@ -1350,10 +1350,9 @@ async def tor_via_curl(url, tor_proxy, user_agent):
         else:
             logging.error(f"cURL TOR failed for {url} with proxy {tor_proxy}. Error: {result.stderr}")
             return None
-
-    except Exception as e:
-        logging.error(f"An error occurred while fetching data: {str(e)}")
-        return None
+     except Exception as e:
+         logging.error(f"An error occurred while fetching data: {str(e)}")
+         return None
 
 async def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
     buffer = BytesIO()
