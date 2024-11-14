@@ -1362,7 +1362,8 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                     # onion_location_match = re.search(r"^onion-location:\s*(\S+)", line, re.IGNORECASE)
                     if onion_location_match:
                         redirect_url = onion_location_match.group(1).strip()
-                        logging.info(f"Redirecting to Onion Location: {redirect_url}")
+                        proxy = proxy.replace("socks5://", "socks5h://")
+                        logging.info(f"Redirecting to Onion Location: {redirect_url} with proxy {proxy}")
                         return await tor_via_curl(redirect_url, proxy, user_agent)
                     else:
                         #logging.error(f"Response headers:\n{headers[:500]}")
