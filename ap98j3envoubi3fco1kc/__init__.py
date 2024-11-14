@@ -1374,7 +1374,7 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
             if "HTTP/2" in headers or "HTTP/1.1" in headers:
                 if not body.strip():
                     logging.error(f"Empty body for {url_to_fetch} with proxy {proxy} \n body: {body[:500]} \n header: {headers[:500]}")
-                    return {}
+                    body = headers
 
                 try:
                     logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
