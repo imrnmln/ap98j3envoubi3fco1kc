@@ -1351,7 +1351,11 @@ async def tor_via_curl(url_to_fetch, proxy, user_agent):
                 redirect_url = None
                 # Extract the Location header to find where to redirect
                 for line in headers.split("\r\n"):
-                    logging.info(line)
+                    line = line.strip()
+                    if not line:
+                        continue
+            
+                    logging.info(f"Header line: {line}")  # Log each non-empty line
                     # Check both 'location' and 'onion-location' headers in a case-insensitive way
                     if line.lower().startswith("location:"):
                         redirect_url = line.split(":", 1)[1].strip()
