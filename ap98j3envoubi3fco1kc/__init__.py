@@ -1078,7 +1078,11 @@ async def get_tor_session(proxy_type: str = "socks5") -> aiohttp.ClientSession:
     socks_port = random.choice(TOR_PORTS)
     tor_proxy = f"{proxy_type}://127.0.0.1:{socks_port}"
     logging.info(f"[Tor] Fetching with proxy {tor_proxy}")
-    connector = SocksConnector.from_url(tor_proxy)
+    if proxy_type == "socks5":
+        connector = SocksConnector.from_url(tor_proxy)
+    else:
+        connector = ProxyConnector.from_url(tor_proxy)
+        
     session = aiohttp.ClientSession(connector=connector)
     return session
 
@@ -1097,14 +1101,17 @@ async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5") 
                         logging.warning(f"[Tor] Unexpected content type: {content_type}")
                         return {}
                 elif response.status == 429:
-                    logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
-                    return {}
-                    # if "reddit.com" in url:
-                    #     return await fetch_with_tor_socks5h(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent)
-                    #     # return await fetch_with_tor(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent, "socks5h")
-                    # else:
-                    #     logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
-                    #     return {}
+                    # logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
+                    # return {}
+                    if "reddit.com" in url:
+                        url = url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion")
+                        if not "www." in url:
+                            url = url.replace("reddittor", "www.reddittor")
+                        #return await fetch_with_tor_socks5h(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent)
+                        return await fetch_with_tor(url, user_agent, "socks5h")
+                    else:
+                        logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
+                        return {}
                 else:
                     logging.warning(f"[Tor] Error fetching {url} with status: {response.status}")
                     return {}
