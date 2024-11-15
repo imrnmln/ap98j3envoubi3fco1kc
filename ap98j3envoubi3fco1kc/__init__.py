@@ -1087,7 +1087,7 @@ async def get_tor_session(proxy_type: str, socks_port: str) -> aiohttp.ClientSes
     return session
 
 
-async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5", socks_port: str) -> dict:
+async def fetch_with_tor(url: str, user_agent: str, proxy_type: str, socks_port: str) -> dict:
     """Fetch the URL through Tor, retrying in case of rate limiting or errors."""
     try:
         async with await get_tor_session(proxy_type, socks_port) as session:
