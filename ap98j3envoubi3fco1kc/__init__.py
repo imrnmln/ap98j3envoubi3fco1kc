@@ -1928,8 +1928,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
     logging.info("[Reddit] [JSON MODE] opening urls: %s", urls)
     async with aiohttp.ClientSession(cookies=cookies) as session:
         lock = asyncio.Lock()
-        socks_port = random.choice(TOR_PORTS)
-        tasks = [fetch_subreddit_json(session, url, socks_port) for url in urls]
+        tasks = [fetch_subreddit_json(session, url, random.choice(TOR_PORTS)) for url in urls]
         json_responses = await asyncio.gather(*tasks)
         
         for data, url in zip(json_responses, urls):
@@ -1939,7 +1938,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
                 lock = asyncio.Lock()
                 for permalink in permalinks:
                     logging.warning("[Reddit] [JSON MODE] find permalink, add to tasks %s.", permalink)
-                    tasks.append(fetch_and_scrap_post(permalink, socks_port))
+                    tasks.append(fetch_and_scrap_post(permalink, random.choice(TOR_PORTS)))
             
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 for result in results:
