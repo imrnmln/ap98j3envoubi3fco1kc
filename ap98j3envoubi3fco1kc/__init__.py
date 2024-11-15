@@ -1056,10 +1056,11 @@ async def fetch_with_tor_socks5h(url: str, user_agent: str) -> dict:
 
         # Attempt to parse the result as JSON
         try:
+            logging.info(f"CURL socks5h success with proxy {tor_proxy}")
             response_data = json.loads(result.stdout)
             return response_data
         except json.JSONDecodeError:
-            logging.error(f"[Tor] Failed to decode JSON from curl output: {result.stdout[:500]}")
+            logging.error(f"[Tor] Failed to decode JSON from curl socks5h output: {result.stdout[:500]}")
             return {}
 
     except Exception as e:
