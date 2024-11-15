@@ -1011,14 +1011,13 @@ async def manage_proxies():
     
 #     return random.choice(proxies)
 
-async def fetch_with_tor_socks5h(url: str, user_agent: str) -> dict:
+async def fetch_with_tor_socks5h(url: str, user_agent: str, socks_port: str) -> dict:
     """Fetch the URL using curl with a socks5h proxy (DNS resolution via Tor)."""
     try:
         # Choose a random Tor port from the available options
-        if not "www." in url:
-            url = url.replace("reddittor", "www.reddittor")
+        if not socks_port:
+            socks_port = random.choice(TOR_PORTS)
             
-        socks_port = random.choice(TOR_PORTS)
         tor_proxy = f"socks5h://127.0.0.1:{socks_port}"
         
         # Create the curl command with the socks5h proxy to use DNS resolution through Tor
@@ -1067,14 +1066,16 @@ async def fetch_with_tor_socks5h(url: str, user_agent: str) -> dict:
         logging.error(f"[Tor] Error during curl fetch: {e}")
         return {}
 
-async def get_tor_session(proxy_type: str = "socks5") -> aiohttp.ClientSession:
+async def get_tor_session(proxy_type: str = "socks5", socks_port: str) -> aiohttp.ClientSession:
     """Return a new aiohttp session configured to use Tor with either socks5 or socks5h."""
     
     # Validate proxy_type
     if proxy_type not in ["socks5", "socks5h"]:
         raise ValueError("proxy_type must be either 'socks5' or 'socks5h'")
 
-    socks_port = random.choice(TOR_PORTS)
+    if not socks_port:
+        socks_port = random.choice(TOR_PORTS)
+        
     tor_proxy = f"{proxy_type}://127.0.0.1:{socks_port}"
     logging.info(f"[Tor] Fetching with proxy {tor_proxy}")
     if proxy_type == "socks5":
@@ -1086,10 +1087,10 @@ async def get_tor_session(proxy_type: str = "socks5") -> aiohttp.ClientSession:
     return session
 
 
-async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5") -> dict:
+async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5", socks_port: str) -> dict:
     """Fetch the URL through Tor, retrying in case of rate limiting or errors."""
     try:
-        async with await get_tor_session(proxy_type) as session:
+        async with await get_tor_session(proxy_type, socks_port) as session:
             logging.info(f"[Tor] Fetching {url} with Tor")
             async with session.get(url, headers={"User-Agent": user_agent}, timeout=BASE_TIMEOUT) as response:
                 if response.status == 200:
@@ -1104,9 +1105,9 @@ async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5") 
                     # return {}
                     if "reddit.com" in url:
                         url = url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion")
-                        if not "www." in url:
+                        if not "www." in url and not "comment" in url:
                             url = url.replace("reddittor", "www.reddittor")
-                        return await fetch_with_tor_socks5h(url, user_agent)
+                        return await fetch_with_tor_socks5h(url, user_agent, socks_port)
                         #return await fetch_with_tor(url, user_agent, "socks5h")
                     else:
                         logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
@@ -1189,7 +1190,7 @@ def extract_subreddit_name(input_string):
         return match.group(1)
     return None
 
-async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]:
+async def scrap_post(url: str, socks_port: str) -> AsyncGenerator[Item, None]:
     resolvers = {}
 
     async def post(data) -> AsyncGenerator[Item, None]:
@@ -1270,7 +1271,7 @@ async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]
                 timeout=BASE_TIMEOUT) as response:
                 if response.status == 429:
                     logging.warning("[Reddit] [COMMENT SECTION] [Try to use TOR]  Scraping - getting Rate limit encountered for %s.", _url)
-                    response = await fetch_with_tor(_url, random.choice(USER_AGENT_LIST), "socks5")
+                    response = await fetch_with_tor(_url, random.choice(USER_AGENT_LIST), "socks5", socks_port)
                 else:
                     response = await response.json()
 
@@ -1882,7 +1883,7 @@ async def fetch_new_layout_with_proxy(session, url_to_fetch):
         logging.error(f"Proxies not found")
         return ''
         
-async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str, lock: asyncio.Lock) -> dict:
+async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str, socks_port: str) -> dict:
     url_to_fetch = subreddit_url
     if "https:/reddit.com" in url_to_fetch:
         url_to_fetch = url_to_fetch.replace("https:/reddit.com", "https://reddit.com")
@@ -1901,20 +1902,20 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] [Try to use TOR for Sub Reddit] Rate limit encountered for %s.", url_to_fetch)
-            return await fetch_with_tor(url_to_fetch, random.choice(USER_AGENT_LIST), "socks5")
+            return await fetch_with_tor(url_to_fetch, random.choice(USER_AGENT_LIST), "socks5", socks_port)
             
         if response.status != 200:
             logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status} for {url_to_fetch}")
             return {}
         return await response.json()
 
-async def fetch_and_scrap_post(permalink, lock: asyncio.Lock):
+async def fetch_and_scrap_post(permalink, socks_port: str):
     post_url = permalink
     if not post_url.startswith("https://"):
         post_url = f"https://reddit.com{post_url}"
     items = []
     try:
-        async for item in scrap_post(post_url, lock):
+        async for item in scrap_post(post_url, socks_port):
             items.append(item)
     except Exception as e:
         logging.exception(f"[Reddit] [JSON MODE] Error detected: {e} {post_url}")
@@ -1927,7 +1928,8 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
     logging.info("[Reddit] [JSON MODE] opening urls: %s", urls)
     async with aiohttp.ClientSession(cookies=cookies) as session:
         lock = asyncio.Lock()
-        tasks = [fetch_subreddit_json(session, url, lock) for url in urls]
+        socks_port = random.choice(TOR_PORTS)
+        tasks = [fetch_subreddit_json(session, url, socks_port) for url in urls]
         json_responses = await asyncio.gather(*tasks)
         
         for data, url in zip(json_responses, urls):
@@ -1937,7 +1939,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
                 lock = asyncio.Lock()
                 for permalink in permalinks:
                     logging.warning("[Reddit] [JSON MODE] find permalink, add to tasks %s.", permalink)
-                    tasks.append(fetch_and_scrap_post(permalink, lock))
+                    tasks.append(fetch_and_scrap_post(permalink, socks_port))
             
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 for result in results:
@@ -2081,8 +2083,8 @@ async def query(parameters: dict) -> AsyncGenerator[Item, None]:
             raise ValueError(f"Not a Reddit URL {url}")
         url_parameters = url.split("reddit.com")[1].split("/")[1:]
         if "comments" in url_parameters:
-            lock = asyncio.Lock()
-            async for result in scrap_post(url, lock):
+            socks_port = random.choice(TOR_PORTS)
+            async for result in scrap_post(url, socks_port):
 
                 yielded_items += 1
                 result = post_process_item(result)
