@@ -1066,7 +1066,7 @@ async def fetch_with_tor_socks5h(url: str, user_agent: str, socks_port: str) -> 
         logging.error(f"[Tor] Error during curl fetch: {e}")
         return {}
 
-async def get_tor_session(proxy_type: str = "socks5", socks_port: str) -> aiohttp.ClientSession:
+async def get_tor_session(proxy_type: str, socks_port: str) -> aiohttp.ClientSession:
     """Return a new aiohttp session configured to use Tor with either socks5 or socks5h."""
     
     # Validate proxy_type
