@@ -1025,11 +1025,9 @@ async def fetch_with_tor_socks5h(url: str, user_agent: str) -> dict:
         curl_command = [
             "curl",
             "-x", tor_proxy,
-            "-A", user_agent,  # Set User-Agent
             "-s",  # Silent mode (no progress output)
             "-L",  # Follow redirects
             "-m", "5",  # Set the timeout for the request
-            "--max-time", "5",  # Set the maximum time for the request
             url
         ]
 
@@ -1107,8 +1105,8 @@ async def fetch_with_tor(url: str, user_agent: str, proxy_type: str = "socks5") 
                         url = url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion")
                         if not "www." in url:
                             url = url.replace("reddittor", "www.reddittor")
-                        #return await fetch_with_tor_socks5h(url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion"), user_agent)
-                        return await fetch_with_tor(url, user_agent, "socks5h")
+                        return await fetch_with_tor_socks5h(url, user_agent)
+                        #return await fetch_with_tor(url, user_agent, "socks5h")
                     else:
                         logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
                         return {}
