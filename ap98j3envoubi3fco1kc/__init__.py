@@ -1133,7 +1133,7 @@ async def fetch_with_tor(url: str, user_agent: str, proxy_type: str, socks_port:
                         return {}
                 elif response.status == 429:
                     logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
-                    return {}
+                    return await fetch_subreddit_json_using_sub_domain_and_curl(url)
                     # if "reddit.com" in url:
                     #     url = url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion")
                     #     if not "www." in url and not "comment" in url:
@@ -1606,6 +1606,31 @@ async def fetch_new_layout_with_proxy(session, url_to_fetch):
         logging.error(f"Proxies not found")
         return ''
     
+async def fetch_subreddit_json_using_sub_domain_and_curl(subreddit_url: str):
+    url_to_fetch = subreddit_url
+    command = [
+        'curl', '-L', '-s', 
+        "--max-time", str(BASE_TIMEOUT), 
+        '-H', f"User-Agent: {random.choice(USER_AGENT_LIST)}",
+        url_to_fetch
+    ]
+
+    try:
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        if result.returncode == 0:
+            logging.info(f"cURL success for {url_to_fetch} ")
+            content = result.stdout.decode('utf-8')
+            return json.loads(content)
+        else:
+            logging.error(f"cURL failed for {url_to_fetch} ")
+            return {}
+    except subprocess.TimeoutExpired:
+        logging.error(f"cURL timeout expired for {url_to_fetch} ")
+        return {}
+    except json.JSONDecodeError:
+        logging.error(f"cURL returned non-JSON response for {url_to_fetch}")
+        return {}
+    
 async def fetch_subreddit_json_using_sub_domain_curl(subreddit_url: str, socks_port: str) -> dict:
     url_to_fetch = subreddit_url
     logging.info("[Reddit] [JSON MODE with Sub Domain] opening: %s", url_to_fetch)
@@ -1687,7 +1712,7 @@ async def fetch_subreddit_json_using_sub_domain(session: aiohttp.ClientSession, 
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] [Try to use curl for Sub Reddit] Rate limit encountered even using subdomain for %s.", url_to_fetch)
-            return await fetch_subreddit_json_using_sub_domain_curl(url_to_fetch, socks_port)
+            return await fetch_with_tor(url_to_fetch, random.choice(USER_AGENT_LIST), "socks5", socks_port)
             
         if response.status != 200:
             logging.error(f"[Reddit] [JSON MODE] Non-200 status code for subdomain: {response.status} for {url_to_fetch}")
