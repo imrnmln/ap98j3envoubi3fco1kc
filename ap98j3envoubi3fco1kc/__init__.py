@@ -24,7 +24,6 @@ from datetime import timezone
 import pytz
 import hashlib
 import logging
-import http.client
 from lxml.html import fromstring
 from bs4 import BeautifulSoup
 import re
@@ -443,7 +442,7 @@ subreddits_top_1000 = [
 tor_lock = asyncio.Lock()
 # A flag to track whether the Tor circuit rotation is already in progress
 circuit_rotation_in_progress = False
-TOR_PORTS = [9050, 9052, 9054, 9056, 9058, 9060, 9062, 9064, 9066, 9068, 9070, 9072, 9074, 9076, 9078, 9080, 9082, 9084, 9086, 9088, 9090, 9092, 9094, 9096, 9098, 9100, 9102, 9104, 9106, 9108, 9110, 9112, 9114, 9116, 9118, 9120, 9122, 9124, 9126, 9128]
+TOR_PORTS = [9050, 9052, 9054, 9056, 9058, 9060, 9062, 9064, 9066, 9068, 9070, 9072, 9074, 9076, 9078, 9080, 9082, 9084, 9086, 9088]
 
 
 async def generate_random_string():
@@ -873,7 +872,7 @@ async def test_proxy_curl(proxy, test_url):
 
 async def test_proxy_pycurl(proxy, test_url):
     logging.warning(f"Try proxy using pycurl: {proxy}")
-    buffer = ()
+    buffer = BytesIO()
     c = pycurl.Curl()
     
     try:
@@ -1011,114 +1010,6 @@ async def manage_proxies():
     
 #     return random.choice(proxies)
 
-async def fetch_with_tor_socks5h(url: str, user_agent: str, socks_port: str) -> dict:
-    """Fetch the URL using curl with a socks5h proxy (DNS resolution via Tor)."""
-    try:
-        # Choose a random Tor port from the available options
-        if not socks_port:
-            socks_port = random.choice(TOR_PORTS)
-            
-        tor_proxy = f"socks5h://127.0.0.1:{socks_port}"
-        
-        # Create the curl command with the socks5h proxy to use DNS resolution through Tor
-        curl_command = [
-            "curl",
-            "-x", tor_proxy,
-            "-s",  # Silent mode (no progress output)
-            "-L",  # Follow redirects
-            "-m", "7",  # Set the timeout for the request
-            url
-        ]
-
-        # command = [
-        #     "curl", "-L", "-s",  # -i includes headers, -s is silent (no progress bar)
-        #     "-x", proxy,         # Proxy
-        #     "--max-time", "15",  # Timeout after 30 seconds
-        #     url_to_fetch         # URL to fetch
-        # ]
-        
-        # Execute the curl command and capture the output
-        logging.warning(f"[Tor] Rate limit encountered for {url}, retrying with curl socks5h {tor_proxy}...")
-        result = subprocess.run(curl_command, capture_output=True, text=True)
-
-        # Check if curl ran successfully
-        if result.returncode != 0:
-            logging.error(f"[Tor] curl command failed with exit code {result.returncode}")
-            return {}
-
-        if '<html>' in result.stdout.lower():
-            if 'too many requests' in result.stdout.lower():
-                logging.warning(f"[Tor] Rate limiting detected (HTTP 429). URL: {url} with curl socks5h {tor_proxy}")
-            else:
-                logging.warning(f"[Tor] Unexpected HTML response received: {result.stdout[:500]}")
-            return {}
-
-        # Attempt to parse the result as JSON
-        try:
-            logging.info(f"CURL socks5h success with proxy {tor_proxy}")
-            response_data = json.loads(result.stdout)
-            return response_data
-        except json.JSONDecodeError:
-            logging.error(f"[Tor] Failed to decode JSON from curl socks5h output: {result.stdout[:500]}")
-            return {}
-
-    except Exception as e:
-        logging.error(f"[Tor] Error during curl fetch: {e}")
-        return {}
-
-async def get_tor_session(proxy_type: str, socks_port: str) -> aiohttp.ClientSession:
-    """Return a new aiohttp session configured to use Tor with either socks5 or socks5h."""
-    
-    # Validate proxy_type
-    if proxy_type not in ["socks5", "socks5h"]:
-        raise ValueError("proxy_type must be either 'socks5' or 'socks5h'")
-
-    if not socks_port:
-        socks_port = random.choice(TOR_PORTS)
-        
-    tor_proxy = f"{proxy_type}://127.0.0.1:{socks_port}"
-    logging.info(f"[Tor] Fetching with proxy {tor_proxy}")
-    if proxy_type == "socks5":
-        connector = SocksConnector.from_url(tor_proxy)
-    else:
-        connector = ProxyConnector.from_url(tor_proxy)
-        
-    session = aiohttp.ClientSession(connector=connector)
-    return session
-
-
-async def fetch_with_tor(url: str, user_agent: str, proxy_type: str, socks_port: str) -> dict:
-    """Fetch the URL through Tor, retrying in case of rate limiting or errors."""
-    try:
-        async with await get_tor_session(proxy_type, socks_port) as session:
-            logging.info(f"[Tor] Fetching {url} with Tor")
-            async with session.get(url, headers={"User-Agent": user_agent}, timeout=BASE_TIMEOUT) as response:
-                if response.status == 200:
-                    content_type = response.headers.get('Content-Type', '').lower()
-                    if 'application/json' in content_type:
-                        return await response.json()
-                    else:
-                        logging.warning(f"[Tor] Unexpected content type: {content_type}")
-                        return {}
-                elif response.status == 429:
-                    # logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
-                    # return {}
-                    if "reddit.com" in url:
-                        url = url.replace("reddit.com","reddittorjg6rue252oqsxryoxengawnmo46qy4kyii5wtqnwfj4ooad.onion")
-                        if not "www." in url and not "comment" in url:
-                            url = url.replace("reddittor", "www.reddittor")
-                        return await fetch_with_tor_socks5h(url, user_agent, socks_port)
-                        #return await fetch_with_tor(url, user_agent, "socks5h")
-                    else:
-                        logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
-                        return {}
-                else:
-                    logging.warning(f"[Tor] Error fetching {url} with status: {response.status}")
-                    return {}
-    except Exception as e:
-        logging.warning(f"[Tor] Error: {e}")
-        return {}
-
 async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
     """
     Generate a subreddit URL using the search tool with `keyword`.
@@ -1159,11 +1050,11 @@ async def generate_url(autonomous_subreddit_choice=0.35, keyword: str = "news"):
         if random.random() < 0.35:     
             logging.info("[Reddit] Top 225 Subreddits mode!")       
             selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
+            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)+";"+"https://reddit.com/" + random.choice(subreddits_top_225)
         else:            
             logging.info("[Reddit] Top 1000 Subreddits mode!")
             selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
-            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
+            selected_subreddit_ = "https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)+";"+"https://reddit.com/" + random.choice(subreddits_top_1000)
         
         return selected_subreddit_
 
@@ -1190,7 +1081,7 @@ def extract_subreddit_name(input_string):
         return match.group(1)
     return None
 
-async def scrap_post(url: str, socks_port: str) -> AsyncGenerator[Item, None]:
+async def scrap_post(url: str, lock: asyncio.Lock) -> AsyncGenerator[Item, None]:
     resolvers = {}
 
     async def post(data) -> AsyncGenerator[Item, None]:
@@ -1271,7 +1162,41 @@ async def scrap_post(url: str, socks_port: str) -> AsyncGenerator[Item, None]:
                 timeout=BASE_TIMEOUT) as response:
                 if response.status == 429:
                     logging.warning("[Reddit] [COMMENT SECTION] [Try to use TOR]  Scraping - getting Rate limit encountered for %s.", _url)
-                    response = await fetch_with_tor(_url, random.choice(USER_AGENT_LIST), "socks5", socks_port)
+                    socks_port = random.choice(TOR_PORTS)
+                    TOR_PROXY = f"socks5://127.0.0.1:{socks_port}"
+                    #TOR_PROXY = f"socks5h://127.0.0.1:{socks_port}"  # Using 'socks5h' to resolve DNS through Tor
+                    connector = SocksConnector.from_url(TOR_PROXY)
+                    #connector = ProxyConnector.from_url(TOR_PROXY)
+                    async with aiohttp.ClientSession(connector=connector) as session:
+                        try:
+                            async with session.get(_url, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=aiohttp.ClientTimeout(total=30), allow_redirects=True) as response_tor:
+                                if response_tor.status == 200:
+                                    content_type = response_tor.headers.get('Content-Type', '').lower()
+                                    if 'application/json' in content_type:
+                                        try:
+                                            response = await response_tor.json()
+                                        except Exception as e:
+                                            logging.warning(f"Failed to decode JSON: {e}")
+                                            response = {} 
+                                    elif 'text/html' in content_type:
+                                        logging.warning(f"Received HTML instead of JSON. Response Status: {response_tor.status}")
+                                        html_content = await response_tor.text()
+                                        logging.warning(f"HTML Content: {html_content[:500]}")
+                                        response = {} 
+                                    else:
+                                        logging.warning(f"Unexpected Content-Type: {content_type}")
+                                        response = {} 
+                                else:
+                                    # if response_tor.status == 429:
+                                    #     await rotate_tor_circuit(socks_port+1)
+                                    logging.warning(f"Error via HTTP Proxy, status: {response_tor.status} {TOR_PROXY}")
+                                    response = {} 
+                        except asyncio.TimeoutError:
+                            logging.warning("Request timed out.")
+                            response = {} 
+                        except Exception as e:
+                            logging.warning(f"An error occurred: {e}")
+                            response = {} 
                 else:
                     response = await response.json()
 
@@ -1395,326 +1320,8 @@ async def fetch_with_proxy_using_curl(url_to_fetch, proxy):
         logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
         return {}
 
-# def handle_chunked_response(response_body):
-#     """
-#     Handles chunked responses by decoding the chunked transfer encoding.
-#     """
-#     if response_body:
-#         try:
-#             if response_body.startswith(b'\x1f\x8b'):
-#                 with gzip.GzipFile(fileobj=BytesIO(response_body)) as f:
-#                     return f.read().decode('utf-8')
-#             else:
-#                 return response_body.decode('utf-8')
-#         except Exception as e:
-#             logging.error(f"Error decoding chunked response: {str(e)}")
-#             return None
-#     return None
-
-def handle_chunked_response(chunked_body):
-    # This will handle chunked transfer encoding and return the decoded body.
-    # It uses Python's standard library to decode the chunked response.
-    conn = http.client.HTTPConnection("localhost", 80)
-    conn.putrequest("POST", "/")
-    conn.putheader("Content-Length", str(len(chunked_body)))
-    conn.endheaders()
-    conn.send(chunked_body)
-    return conn.getresponse().read()
-
-async def tor_via_curl(url_to_fetch, proxy, user_agent):
-    # Set up the cURL command
-    if ".onion" in url_to_fetch:
-        command = [
-            "curl", "-L", "-s",  # -i includes headers, -s is silent (no progress bar)
-            "-x", proxy,         # Proxy
-            "--max-time", "15",  # Timeout after 30 seconds
-            url_to_fetch         # URL to fetch
-        ]
-    else:
-        command = [
-            "curl", "-i", "-s",  # -i includes headers, -s is silent (no progress bar)
-            "-x", proxy,         # Proxy
-            "-A", user_agent,    # User-Agent
-            "--max-time", "30",  # Timeout after 30 seconds
-            url_to_fetch         # URL to fetch
-        ]
-
-    try:
-        # Run the cURL command
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, text=True)
-        logging.info(f"Try with TOR CURL to: {url_to_fetch}")
-        if result.returncode == 0:
-            response_content = result.stdout
-
-            # Split the headers and body using the "\r\n\r\n" separator
-            if "\r\n\r\n" in response_content:
-                headers, body = response_content.split("\r\n\r\n", 1)
-                logging.debug(f"Response headers:\n{headers}")
-            else:
-                headers = response_content  # If no separator, treat the entire content as headers
-                body = ""  # No body if separator isn't found
-
-            # Check for redirects (301, 302, 429)
-            if "HTTP/2 301" in headers or "HTTP/2 302" in headers or "HTTP/2 429" in headers:
-                redirect_url = None
-                for line in headers.split("\r\n"):
-                    line = line.strip()
-                    if not line:
-                        continue
-
-                    line = line.replace("\r\n", " ").strip()
-                    redirect_url = None
-                    onion_location_match = re.search(r"onion-location:\s*(\S+)", line, re.IGNORECASE)
-                    if onion_location_match:
-                        redirect_url = onion_location_match.group(1).strip()
-                        proxy = proxy.replace("socks5://", "socks5h://")
-                        logging.info(f"Redirecting to Onion Location: {redirect_url} with proxy {proxy}")
-                        return await tor_via_curl(redirect_url, proxy, user_agent)
-                    else:
-                        logging.error(f"Redirect onion URL not found in response headers for {url_to_fetch} with proxy {proxy}")
-                        return {}
-
-            # Only process the body if we have an HTTP 200 status
-            if "HTTP/2 200" in headers or "HTTP/1.1 200" in headers:
-                content_type = ""
-                for line in headers.split("\r\n"):
-                    if "Content-Type" in line:
-                        content_type = line.split(":", 1)[1].strip().lower()
-                        break
-
-                if "Transfer-Encoding: chunked" in headers:
-                    if body:  # Only handle chunked encoding if the body exists
-                        body = handle_chunked_response(body.encode('utf-8'))
-                    else:
-                        logging.warning(f"Received chunked response, but the body is empty. {headers[:2000]}")
-                        return {}
-
-                elif "Content-Length" in headers and "0" in headers.get("Content-Length", ""):
-                    logging.info(f"Empty body detected with Content-Length: 0")
-                    body = None  # Explicitly handle empty body if Content-Length is 0
-
-                # Process based on content type
-                if 'application/json' in content_type:
-                    if not body.strip():
-                        logging.error(f"Empty body for {url_to_fetch} with proxy {proxy}")
-                        return {}
-
-                    try:
-                        logging.info("Parsing response as JSON")
-                        response_data = json.loads(body)
-                        return response_data
-                    except json.JSONDecodeError as e:
-                        logging.warning(f"Failed to decode JSON: {e}")
-                        return {}
-
-                elif 'text/html' in content_type:
-                    logging.warning(f"Received HTML instead of JSON. Response Headers: {headers[:500]}")
-                    logging.warning(f"HTML Content: {body[:500]}")
-                    return {}
-
-                else:
-                    logging.warning(f"Unexpected Content-Type: {content_type}")
-                    return {}
-
-            else:
-                logging.error(f"Unexpected HTTP response code for {url_to_fetch} with proxy {proxy}. Response headers: {headers[:100]}")
-                if headers.strip().startswith("{") and headers.strip().endswith("}"):
-                    try:
-                        logging.info("Parsing headers as JSON since they appear to be JSON-like.")
-                        return json.loads(headers)
-                    except json.JSONDecodeError:
-                        logging.error(f"Failed to parse headers as JSON. Returning empty dictionary.")
-                        return {}
-
-                return {}
-
-        else:
-            # If the cURL command failed, log the error and return empty dict
-            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}. Error: {result.stderr}")
-            return {}
-
-    except subprocess.TimeoutExpired:
-        logging.error(f"cURL timeout expired for {url_to_fetch} with proxy {proxy}")
-        return {}
-    except Exception as e:
-        logging.error(f"An unexpected error occurred: {str(e)}")
-        return {}
-
-
-async def tor_via_curl2(url_to_fetch, proxy, user_agent):
-    # Set up the cURL command
-    if ".onion" in url_to_fetch:
-        command = [
-            "curl", "-L", "-s",  # -i includes headers, -s is silent (no progress bar)
-            "-x", proxy,         # Proxy
-            "--max-time", "15",  # Timeout after 30 seconds
-            url_to_fetch         # URL to fetch
-        ]
-    else:
-        command = [
-            "curl", "-i", "-s",  # -i includes headers, -s is silent (no progress bar)
-            "-x", proxy,         # Proxy
-            "-A", user_agent,    # User-Agent
-            "--max-time", "30",  # Timeout after 30 seconds
-            url_to_fetch         # URL to fetch
-        ]
-
-    try:
-        # Run the cURL command
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, text=True)
-        logging.info(f"Try with TOR CURL to: {url_to_fetch}")
-        if result.returncode == 0:
-            response_content = result.stdout
-
-            # Split the headers and body using the "\r\n\r\n" separator
-            if "\r\n\r\n" in response_content:
-                headers, body = response_content.split("\r\n\r\n", 1)
-                logging.debug(f"Response headers:\n{headers}")
-            else:
-                headers = response_content  # If no separator, treat the entire content as headers
-                body = ""  # No body if separator isn't found
-
-            # Check for redirects (301, 302)
-            if "HTTP/2 301" in headers or "HTTP/2 302" in headers or "HTTP/2 429" in headers:
-                redirect_url = None
-                for line in headers.split("\r\n"):
-                    # Strip leading/trailing whitespace
-                    line = line.strip()
-                    if not line:
-                        continue
-
-                    #logging.info(f"Header line: {line}")
-                    line = line.replace("\r\n", " ").strip()
-                    redirect_url = None
-                    onion_location_match = re.search(r"onion-location:\s*(\S+)", line, re.IGNORECASE)
-                    # onion_location_match = re.search(r"^onion-location:\s*(\S+)", line, re.IGNORECASE)
-                    if onion_location_match:
-                        redirect_url = onion_location_match.group(1).strip()
-                        proxy = proxy.replace("socks5://", "socks5h://")
-                        logging.info(f"Redirecting to Onion Location: {redirect_url} with proxy {proxy}")
-                        return await tor_via_curl(redirect_url, proxy, user_agent)
-                    else:
-                        #logging.error(f"Response headers:\n{headers[:500]}")
-                        logging.error(f"Redirect onion URL not found in response headers for {url_to_fetch} with proxy {proxy}")
-                        return {}
-
-            # Only process the body if we have an HTTP 200 status
-            if "HTTP/2 200" in headers or "HTTP/1.1 200" in headers:
-                if "Transfer-Encoding: chunked" in headers:
-                    if body:  # Only handle chunked encoding if the body exists
-                        body = handle_chunked_response(body.encode('utf-8'))
-                    else:
-                        logging.warning(f"Received chunked response, but the body is empty. {headers[:2000]}")
-                        content_type = ""
-                        for line in headers.split("\r\n"):
-                            if "Content-Type" in line:
-                                content_type = line.split(":", 1)[1].strip().lower()
-                                break
-                                
-                        if 'application/json' in content_type:
-                            try:
-                                logging.info("Parsing response as JSON")
-                                return json.loads(headers)
-                            except json.JSONDecodeError as e:
-                                logging.warning(f"Failed to decode JSON: {e}")
-                                return {}
-                        elif 'text/html' in content_type:
-                            logging.warning(f"Received HTML instead of JSON. Response Headers: {headers[:500]}")
-                            logging.warning(f"HTML Content: {body[:500]}")
-                            return {}
-                elif "Content-Length" in headers and "0" in headers.get("Content-Length", ""):
-                    logging.info(f"Empty body detected with Content-Length: 0")
-                    body = None  # Explicitly handle empty body if Content-Length is 0
-
-                if not body.strip():
-                    logging.error(f"Empty body for {url_to_fetch} with proxy {proxy} \n body: {body[:500]} \n header: {headers[:500]}")
-                    return {}
-
-                try:
-                    logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
-                    content = json.loads(body)
-                    return content
-                except json.JSONDecodeError:
-                    logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
-                    logging.error(f"Response body (non-JSON):\n{body[:2000]}")  # Log part of the body for debugging
-                    return {}
-            else:
-                logging.error(f"Unexpected HTTP response code for {url_to_fetch} with proxy {proxy}. Response headers: {headers[:100]}")
-                if headers.strip().startswith("{") and headers.strip().endswith("}"):
-                    try:
-                        logging.info("Parsing headers as JSON since they appear to be JSON-like.")
-                        return json.loads(headers)
-                    except json.JSONDecodeError:
-                        logging.error(f"Failed to parse headers as JSON. Returning empty dictionary.")
-                        return {}
-                
-                return {}
-
-        else:
-            # If the cURL command failed, log the error and return empty dict
-            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}. Error: {result.stderr}")
-            return {}
-
-    except subprocess.TimeoutExpired:
-        logging.error(f"cURL timeout expired for {url_to_fetch} with proxy {proxy}")
-        return {}
-    except Exception as e:
-        logging.error(f"An unexpected error occurred: {str(e)}")
-        return {}
-
-async def tor_via_curl1(url_to_fetch, proxy, user_agent):
-    command = [
-            "curl", "-i", "-L", "-s", 
-            "-x", proxy,    
-            "-A", user_agent,   
-            "--max-time", "30", 
-            url_to_fetch                 
-        ]
-
-    try:
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, text=True)
-        if result.returncode == 0:
-            response_content = result.stdout
-            if "\r\n\r\n" in response_content:
-                headers, body = response_content.split("\r\n\r\n", 1)
-                logging.debug(f"Response headers:\n{headers}")
-            else:
-                headers = None
-                body = response_content
-
-            if headers:
-                content_type = next((line for line in headers.split("\r\n") if line.lower().startswith("content-type")), None)
-                if content_type:
-                    logging.debug(f"Content-Type: {content_type}")
-                else:
-                    logging.debug("No Content-Type header found")
-
-            if not body.strip():
-                logging.error(f"Empty body for {url_to_fetch} with proxy {proxy}")
-                return {}
-
-            try:
-                content = json.loads(body)
-                logging.info(f"cURL success for {url_to_fetch} with proxy {proxy}")
-                return content
-            except json.JSONDecodeError:
-                logging.error(f"cURL returned non-JSON response for {url_to_fetch} with proxy {proxy}")
-                #logging.error(f"Response body (non-JSON):\n{body[:2000]}")  # Log first 500 characters of the body for inspection
-                return {}
-                
-        else:
-            logging.error(f"cURL failed for {url_to_fetch} with proxy {proxy}. Error: {result.stderr}")
-            return {}
-
-    except subprocess.TimeoutExpired:
-        logging.error(f"cURL timeout expired for {url_to_fetch} with proxy {proxy}")
-        return {}
-    except Exception as e:
-        logging.error(f"An unexpected error occurred: {str(e)}")
-        return {}
-
 async def fetch_with_proxy_using_pycurl(url_to_fetch, proxy):
-    buffer = ()
+    buffer = BytesIO()
     c = pycurl.Curl()
     try:
         c.setopt(c.URL, url_to_fetch)
@@ -1883,7 +1490,7 @@ async def fetch_new_layout_with_proxy(session, url_to_fetch):
         logging.error(f"Proxies not found")
         return ''
         
-async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str, socks_port: str) -> dict:
+async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: str, lock: asyncio.Lock) -> dict:
     url_to_fetch = subreddit_url
     if "https:/reddit.com" in url_to_fetch:
         url_to_fetch = url_to_fetch.replace("https:/reddit.com", "https://reddit.com")
@@ -1902,20 +1509,74 @@ async def fetch_subreddit_json(session: aiohttp.ClientSession, subreddit_url: st
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
             logging.warning("[Reddit] [JSON MODE] [Try to use TOR for Sub Reddit] Rate limit encountered for %s.", url_to_fetch)
-            return await fetch_with_tor(url_to_fetch, random.choice(USER_AGENT_LIST), "socks5", socks_port)
-            
+            TOR_PROXY = "socks5://127.0.0.1:9050"
+            socks_port = random.choice(TOR_PORTS)
+            TOR_PROXY = f"socks5://127.0.0.1:{socks_port}"
+            #connector = ProxyConnector.from_url(TOR_PROXY)
+            #TOR_PROXY = f"socks5h://127.0.0.1:{socks_port}"  # Using 'socks5h' to resolve DNS through Tor
+            connector = SocksConnector.from_url(TOR_PROXY)
+            async with aiohttp.ClientSession(connector=connector) as session:
+                try:
+                    async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=aiohttp.ClientTimeout(total=30), allow_redirects=True) as response:
+                        if response.status == 200:
+                            content_type = response.headers.get('Content-Type', '').lower()
+                            if 'application/json' in content_type:
+                                try:
+                                    return await response.json()
+                                except Exception as e:
+                                    logging.warning(f"Failed to decode JSON: {e}")
+                                    return {} 
+                            elif 'text/html' in content_type:
+                                logging.warning(f"Received HTML instead of JSON. Response Status: {response.status}")
+                                html_content = await response.text()
+                                logging.warning(f"HTML Content: {html_content[:500]}")
+                                return {} 
+                            else:
+                                logging.warning(f"Unexpected Content-Type: {content_type}")
+                                return {} 
+                        else:
+                            # if response.status == 429:
+                            #     await rotate_tor_circuit(socks_port+1)
+                            logging.warning(f"Error via HTTP Proxy, status: {response.status} {TOR_PROXY}")
+                            return {} 
+                except asyncio.TimeoutError:
+                    logging.warning("Request timed out.")
+                    return {} 
+                except Exception as e:
+                    logging.warning(f"An error occurred: {e}")
+                    return {} 
+            # return await fetch_with_proxy(session, url_to_fetch)
+            # await asyncio.sleep(60)
+            # proxy = await manage_proxies()
+            # if proxy:
+            #     if not "https" in proxy:
+            #         url_to_fetch = url_to_fetch.replace("https", "http")
+            #     logging.warning("Rate limit encountered. Retrying with proxy %s.", proxy)
+            #     async with session.get(url_to_fetch, proxy=proxy, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as proxy_response:
+            #         if proxy_response.status == 200:
+            #             content_type = response.headers.get('Content-Type', '')
+            #             if 'application/json' in content_type:
+            #                 logging.error(f"Success to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+            #                 return await proxy_response.json()
+            #             else:
+            #                 logging.error(f"Unexpected content type: {content_type}, URL: {url}")
+            #                 logging.error(f"Response content: {await response.text()}")
+            #         else:
+            #             logging.error(f"Failed to fetch {url_to_fetch} with proxy: {proxy_response.status}")
+            #             return {}
+            # return {} 
         if response.status != 200:
             logging.error(f"[Reddit] [JSON MODE] Non-200 status code: {response.status} for {url_to_fetch}")
             return {}
         return await response.json()
 
-async def fetch_and_scrap_post(permalink, socks_port: str):
+async def fetch_and_scrap_post(permalink, lock: asyncio.Lock):
     post_url = permalink
     if not post_url.startswith("https://"):
         post_url = f"https://reddit.com{post_url}"
     items = []
     try:
-        async for item in scrap_post(post_url, socks_port):
+        async for item in scrap_post(post_url, lock):
             items.append(item)
     except Exception as e:
         logging.exception(f"[Reddit] [JSON MODE] Error detected: {e} {post_url}")
@@ -1928,7 +1589,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
     logging.info("[Reddit] [JSON MODE] opening urls: %s", urls)
     async with aiohttp.ClientSession(cookies=cookies) as session:
         lock = asyncio.Lock()
-        tasks = [fetch_subreddit_json(session, url, random.choice(TOR_PORTS)) for url in urls]
+        tasks = [fetch_subreddit_json(session, url, lock) for url in urls]
         json_responses = await asyncio.gather(*tasks)
         
         for data, url in zip(json_responses, urls):
@@ -1938,7 +1599,7 @@ async def scrap_subreddit_json(subreddit_urls: str) -> AsyncGenerator[str, None]
                 lock = asyncio.Lock()
                 for permalink in permalinks:
                     logging.warning("[Reddit] [JSON MODE] find permalink, add to tasks %s.", permalink)
-                    tasks.append(fetch_and_scrap_post(permalink, random.choice(TOR_PORTS)))
+                    tasks.append(fetch_and_scrap_post(permalink, lock))
             
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 for result in results:
@@ -2082,8 +1743,8 @@ async def query(parameters: dict) -> AsyncGenerator[Item, None]:
             raise ValueError(f"Not a Reddit URL {url}")
         url_parameters = url.split("reddit.com")[1].split("/")[1:]
         if "comments" in url_parameters:
-            socks_port = random.choice(TOR_PORTS)
-            async for result in scrap_post(url, socks_port):
+            lock = asyncio.Lock()
+            async for result in scrap_post(url, lock):
 
                 yielded_items += 1
                 result = post_process_item(result)
