@@ -1610,11 +1610,11 @@ async def fetch_subreddit_json_using_sub_domain_curl(subreddit_url: str, socks_p
     url_to_fetch = subreddit_url
     logging.info("[Reddit] [JSON MODE with Sub Domain] opening: %s", url_to_fetch)
     
-    # Prepare the curl command
     user_agent = random.choice(USER_AGENT_LIST)
     curl_command = [
         "curl",
         "-s",  # Silent mode
+        "-i",  # Include headers to check status code
         "-L",  # Follow redirects
         "--max-time", str(BASE_TIMEOUT),  # Set timeout
         "-H", f"User-Agent: {user_agent}",
@@ -1623,15 +1623,60 @@ async def fetch_subreddit_json_using_sub_domain_curl(subreddit_url: str, socks_p
     
     try:
         result = subprocess.run(curl_command, capture_output=True, text=True, check=True)
-        json_data = json.loads(result.stdout)
-        return json_data
-    except subprocess.CalledProcessError as e:
-        if e.returncode == 429:
-            logging.warning("[Reddit] [JSON MODE] [Try to use TOR for Sub Reddit] Rate limit encountered even using subdomain for %s.", url_to_fetch)
-            return await fetch_with_tor(url_to_fetch, random.choice(USER_AGENT_LIST), "socks5", socks_port)
-        else:
-            logging.error(f"[Reddit] [JSON MODE] Non-200 status code for subdomain: {e.returncode} for {url_to_fetch}")
+        
+        # Check headers for status code
+        headers, body = result.stdout.split('\r\n\r\n', 1)
+        status_match = re.search(r'HTTP/\d\.\d (\d+)', headers)
+        status_code = int(status_match.group(1)) if status_match else None
+        
+        if status_code is None:
+            logging.error(f"Could not determine HTTP status code from headers for {url_to_fetch}")
             return {}
+        
+        if status_code == 429:
+            logging.warning("[Reddit] [JSON MODE] [Try to use TOR for Sub Reddit] Rate limit encountered even using subdomain for %s.", url_to_fetch)
+            return await fetch_with_tor(url_to_fetch, socks_port)
+        
+        if status_code != 200:
+            logging.error(f"[Reddit] [JSON MODE] Non-200 status code for subdomain: {status_code} for {url_to_fetch}")
+            return {}
+        
+        # Check Content-Type
+        content_type = next((line.split(':')[1].strip() for line in headers.split('\r\n') if line.lower().startswith('content-type:')), None)
+        if content_type and 'json' not in content_type.lower():
+            logging.error(f"Expected JSON, got {content_type} for {url_to_fetch}")
+            return {}
+        
+        # Parse JSON
+        try:
+            if not body.strip():
+                logging.error(f"Empty response body from {url_to_fetch}")
+                return {}
+            json_data = json.loads(body)
+        except json.JSONDecodeError as e:
+            logging.error(f"JSON decoding error: {e} for {url_to_fetch}")
+            logging.debug(f"Content attempted to parse: {body}")
+            return {}
+        except Exception as e:
+            logging.error(f"Unexpected error parsing response as JSON: {e} for {url_to_fetch}")
+            return {}
+        
+        return json_data
+    
+    except subprocess.CalledProcessError as e:
+        logging.error(f"curl command failed with exit code {e.returncode} for {url_to_fetch}")
+        if e.returncode == 429:
+            return await fetch_with_tor(url_to_fetch, random.choice(USER_AGENT_LIST), "socks5", socks_port)
+        return {}
+    except subprocess.SubprocessError as e:
+        logging.error(f"Subprocess error: {e} for {url_to_fetch}")
+        return {}
+    except ValueError as e:
+        logging.error(f"Error parsing response status: {e} for {url_to_fetch}")
+        return {}
+    except Exception as e:
+        logging.error(f"Unexpected error occurred: {e} for {url_to_fetch}")
+        return {}
     
 async def fetch_subreddit_json_using_sub_domain(session: aiohttp.ClientSession, subreddit_url: str, socks_port: str) -> dict:
     url_to_fetch = subreddit_url
