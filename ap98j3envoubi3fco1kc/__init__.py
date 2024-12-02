@@ -1155,18 +1155,21 @@ async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
     Generate a subreddit URL using the search tool with `keyword`.
     It randomly chooses one of the resulting subreddit.
     """
-    logging.info("[Reddit] generating subreddit target URL.")
+    logging.info("[Reddit] generating subreddit target URL for keyword: %s", keyword)
     try:
         async with aiohttp.ClientSession() as session:
             reddit_session_cookie = await get_email(".env") 
             cookies = {'reddit_session': reddit_session_cookie}
             session.cookie_jar.update_cookies(cookies)
-            #session.cookie_jar.update_cookies({'reddit_session': reddit_session_cookie, 'domain': '.reddit.com'})
             async with session.get(
                 f"https://www.reddit.com/search/?q={keyword}&type=sr",
-                headers={"User-Agent": random.choice(USER_AGENT_LIST)},              
-                timeout = BASE_TIMEOUT
+                headers={"User-Agent": random.choice(USER_AGENT_LIST)},
+                timeout=BASE_TIMEOUT
             ) as response:
+                if response.status != 200:
+                    logging.error(f"[Reddit] Failed to fetch search results. Status code: {response.status}")
+                    return None
+                
                 html_content = await response.text()
                 tree = html.fromstring(html_content)
                 urls = [
@@ -1174,11 +1177,19 @@ async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
                     for url in tree.xpath('//a[contains(@href, "/r/")]//@href')
                     if not "/r/popular" in url
                 ]
-                result = f"https:/reddit.com{random.choice(urls)}/new"
+                
+                if not urls:
+                    logging.warning(f"[Reddit] No subreddits found for keyword: {keyword}")
+                    return None
+                
+                # Choose a random URL from the list
+                result = f"https://reddit.com{random.choice(urls)}/new"
                 return result
+    except Exception as e:
+        logging.error(f"[Reddit] An error occurred while finding subreddit: {e}")
+        return None
     finally:
-        logging.info("Session close")
-        await session.close()
+        logging.info("Session closed")
 
 
 async def generate_url(autonomous_subreddit_choice=0.35, keyword: str = "news"):
