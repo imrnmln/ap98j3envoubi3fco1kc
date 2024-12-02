@@ -1131,7 +1131,7 @@ async def fetch_with_tor(url: str, user_agent: str, proxy_type: str, socks_port:
                     else:
                         logging.warning(f"[Tor] Unexpected content type: {content_type}")
                         return {}
-                elif response.status == 429:
+                elif response.status == 429 or response.status == 403:
                     logging.warning(f"[Tor] Rate limit encountered for {url}, return nothing...")
                     return await fetch_subreddit_json_using_sub_domain_and_curl(url)
                     # if "reddit.com" in url:
@@ -1319,8 +1319,11 @@ async def scrap_post(url: str, socks_port: str) -> AsyncGenerator[Item, None]:
                 #logging.info(f"Response: {response}")
                 try:
                     [_post, comments] = response
-                except (ValueError, TypeError) as e:
-                    logging.error(f"Error unpacking response for permalink {_url}: {str(e)}")
+                except ValueError as e:
+                    logging.error(f"Error unpacking response for permalink {_url}: {str(e)}. Response content: {response}")
+                    return
+                except TypeError as e:
+                    logging.error(f"Error unpacking response for permalink {_url}: {str(e)}. Response type: {type(response)}")
                     return
                 #logging.info(f"post: {_post}")
                 #logging.info(f"comments: {comments}")
@@ -1711,7 +1714,7 @@ async def fetch_subreddit_json_using_sub_domain(session: aiohttp.ClientSession, 
     session.cookie_jar.update_cookies(cookies)
     async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
         if response.status == 429:
-            logging.warning("[Reddit] [JSON MODE] [Try to use curl for Sub Reddit] Rate limit encountered even using subdomain for %s.", url_to_fetch)
+            logging.warning("[Reddit] [JSON MODE] [Try to use TOR for Sub Reddit] Rate limit encountered even using subdomain for %s.", url_to_fetch)
             return await fetch_with_tor(url_to_fetch, random.choice(USER_AGENT_LIST), "socks5", socks_port)
             
         if response.status != 200:
