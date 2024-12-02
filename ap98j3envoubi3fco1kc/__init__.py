@@ -1150,6 +1150,37 @@ async def fetch_with_tor(url: str, user_agent: str, proxy_type: str, socks_port:
         logging.warning(f"[Tor] Error: {e}")
         return {}
 
+async def find_random_subreddit_for_keyword_using_sub_domain(session: aiohttp.ClientSession, keyword: str) -> dict:
+    url_to_fetch = keyword
+    logging.info("[Reddit] opening: %s", url_to_fetch)
+    reddit_session_cookie = await get_email(".env") 
+    cookies = {'reddit_session': reddit_session_cookie}
+    session.cookie_jar.update_cookies(cookies)
+    async with session.get(url_to_fetch, headers={"User-Agent": random.choice(USER_AGENT_LIST)}, timeout=BASE_TIMEOUT) as response:
+        if response.status == 429:
+            logging.warning("[Reddit] Cannot search keyword because rate limited even using subdomain for %s.", url_to_fetch)
+            return ''
+            
+        if response.status != 200:
+            logging.error(f"[Reddit] Non-200 status code for keyword: {response.status} for {url_to_fetch}")
+            return ''
+            
+        html_content = await response.text()
+        tree = html.fromstring(html_content)
+        urls = [
+            url
+            for url in tree.xpath('//a[contains(@href, "/r/")]//@href')
+            if not "/r/popular" in url
+        ]
+        
+        if not urls:
+            logging.warning(f"[Reddit] No subreddits found for keyword: {keyword}")
+            return None
+        
+        # Choose a random URL from the list
+        result = f"https://reddit.com{random.choice(urls)}/new"
+        return result
+
 async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
     """
     Generate a subreddit URL using the search tool with `keyword`.
@@ -1166,9 +1197,14 @@ async def find_random_subreddit_for_keyword(keyword: str = "BTC"):
                 headers={"User-Agent": random.choice(USER_AGENT_LIST)},
                 timeout=BASE_TIMEOUT
             ) as response:
+                if response.status == 429 or response.status == 403:
+                    logging.warning("[Reddit] Search keyword rate limited. Try using subdomain")
+                    random_subdomain = random.choice(list_sub)
+                    return await find_random_subreddit_for_keyword_using_sub_domain(session, f"https://{random_subdomain}/search/?q={keyword}&type=sr")
+                    
                 if response.status != 200:
-                    logging.error(f"[Reddit] Failed to fetch search results. Status code: {response.status}")
-                    return None
+                    logging.error(f"[Reddit] Non-200 status code for keyword: {response.status} for {keyword}")
+                    return ''
                 
                 html_content = await response.text()
                 tree = html.fromstring(html_content)
